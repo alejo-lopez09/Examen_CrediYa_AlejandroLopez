@@ -1,0 +1,141 @@
+@startuml CrediYa
+
+skinparam classAttributeIconSize 0
+
+abstract class Persona {
+  - id : int
+  - nombre : String
+  - documento : String
+  - correo : String
+  + getTipo() : String
+}
+
+class Empleado {
+  - rol : String
+  - salario : BigDecimal
+}
+
+class Cliente {
+  - telefono : String
+}
+
+class Prestamo {
+  - id : int
+  - monto : BigDecimal
+  - interes : BigDecimal
+  - cuotas : int
+  - fechaInicio : LocalDate
+  - estado : String
+  + calcularMontoTotal() : BigDecimal
+  + calcularCuotaMensual() : BigDecimal
+  + estaVencido() : boolean
+}
+
+class Pago {
+  - id : int
+  - fechaPago : LocalDate
+  - monto : BigDecimal
+}
+
+enum EstadoPrestamo {
+  PENDIENTE
+  PAGADO
+}
+
+interface EmpleadoRepository {
+  + guardar(Empleado) : boolean
+  + listar() : List<Empleado>
+  + buscarPorId(int) : Empleado
+  + actualizar(Empleado) : boolean
+  + eliminar(int) : boolean
+}
+
+interface ClienteRepository {
+  + guardar(Cliente) : boolean
+  + listar() : List<Cliente>
+  + buscarPorId(int) : Cliente
+  + actualizar(Cliente) : boolean
+  + eliminar(int) : boolean
+}
+
+interface PrestamoRepository {
+  + guardar(Prestamo) : boolean
+  + listar() : List<Prestamo>
+  + buscarPorId(int) : Prestamo
+  + cambiarEstado(int, String) : boolean
+  + eliminar(int) : boolean
+  + buscarPorCliente(int) : List<Prestamo>
+}
+
+interface PagoRepository {
+  + guardar(Pago) : boolean
+  + listar() : List<Pago>
+  + buscarPorPrestamo(int) : List<Pago>
+  + totalPagado(int) : BigDecimal
+  + calcularSaldoPendiente(int) : BigDecimal
+  + eliminar(int) : boolean
+}
+
+class EmpleadoDAO
+class ClienteDAO
+class PrestamoDAO
+class PagoDAO
+
+class EmpleadoService
+class ClienteService
+class PrestamoService
+class PagoService
+
+class ArchivoUtil
+class Validaciones
+class CrediYaException
+class Conexion_DB
+class Main
+
+Persona <|-- Empleado
+Persona <|-- Cliente
+
+Prestamo --> Cliente
+Prestamo --> Empleado
+Pago --> Prestamo
+
+EmpleadoRepository <|.. EmpleadoDAO
+ClienteRepository <|.. ClienteDAO
+PrestamoRepository <|.. PrestamoDAO
+PagoRepository <|.. PagoDAO
+
+EmpleadoService --> EmpleadoRepository
+ClienteService --> ClienteRepository
+ClienteService --> PrestamoRepository
+PrestamoService --> PrestamoRepository
+PrestamoService --> ClienteRepository
+PrestamoService --> EmpleadoRepository
+PrestamoService --> PagoRepository
+PrestamoService --> EstadoPrestamo
+PagoService --> PagoRepository
+PagoService --> PrestamoRepository
+
+EmpleadoService --> ArchivoUtil
+ClienteService --> ArchivoUtil
+PrestamoService --> ArchivoUtil
+PagoService --> ArchivoUtil
+
+EmpleadoService --> Validaciones
+ClienteService --> Validaciones
+PrestamoService --> Validaciones
+
+EmpleadoDAO --> Conexion_DB
+ClienteDAO --> Conexion_DB
+PrestamoDAO --> Conexion_DB
+PagoDAO --> Conexion_DB
+
+Main --> EmpleadoService
+Main --> ClienteService
+Main --> PrestamoService
+Main --> PagoService
+
+CrediYaException ..> ArchivoUtil
+CrediYaException ..> PagoDAO
+CrediYaException ..> PrestamoDAO
+
+@enduml

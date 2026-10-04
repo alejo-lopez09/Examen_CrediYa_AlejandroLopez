@@ -1,6 +1,7 @@
 package com.alejotech.crediya.dao;
 
 import com.alejotech.crediya.Conexion.Conexion_DB;
+import com.alejotech.crediya.excepciones.CrediYaException;
 import com.alejotech.crediya.modelo.Cliente;
 import com.alejotech.crediya.modelo.Empleado;
 import com.alejotech.crediya.modelo.Prestamo;
@@ -10,9 +11,9 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
-public class PrestamoDAO {
+public class PrestamoDAO implements PrestamoRepository {
 
-    // Registrar préstamo
+
     public boolean guardar(Prestamo prestamo) {
 
         String sql = """
@@ -27,8 +28,8 @@ public class PrestamoDAO {
 
             ps.setInt(1, prestamo.getCliente().getId());
             ps.setInt(2, prestamo.getEmpleado().getId());
-            ps.setDouble(3, prestamo.getMonto());
-            ps.setDouble(4, prestamo.getInteres());
+            ps.setBigDecimal(3, prestamo.getMonto());
+            ps.setBigDecimal(4, prestamo.getInteres());
             ps.setInt(5, prestamo.getCuotas());
 
             ps.setDate(
@@ -43,15 +44,11 @@ public class PrestamoDAO {
             return true;
 
         } catch (SQLException e) {
-
-            System.out.println("Error al guardar préstamo: "
-                    + e.getMessage());
-
-            return false;
+            throw new CrediYaException("No se pudo guardar el préstamo: " + e.getMessage(), e);
         }
     }
 
-    // Listar todos los préstamos
+
     public List<Prestamo> listar() {
 
         List<Prestamo> prestamos = new ArrayList<>();
@@ -100,15 +97,15 @@ public class PrestamoDAO {
                         rs.getString("empleado_documento"),
                         rs.getString("empleado_correo"),
                         rs.getString("empleado_rol"),
-                        rs.getDouble("empleado_salario")
+                        rs.getBigDecimal("empleado_salario")
                 );
 
                 Prestamo prestamo = new Prestamo(
                         rs.getInt("id"),
                         cliente,
                         empleado,
-                        rs.getDouble("monto"),
-                        rs.getDouble("interes"),
+                        rs.getBigDecimal("monto"),
+                        rs.getBigDecimal("interes"),
                         rs.getInt("cuotas"),
                         rs.getDate("fecha_inicio").toLocalDate(),
                         rs.getString("estado")
@@ -118,15 +115,13 @@ public class PrestamoDAO {
             }
 
         } catch (SQLException e) {
-
-            System.out.println("Error al listar préstamos: "
-                    + e.getMessage());
+            throw new CrediYaException("No se pudieron consultar los préstamos: " + e.getMessage(), e);
         }
 
         return prestamos;
     }
 
-    // Buscar préstamo por ID
+
     public Prestamo buscarPorId(int id) {
 
         String sql = """
@@ -178,15 +173,15 @@ public class PrestamoDAO {
                         rs.getString("empleado_documento"),
                         rs.getString("empleado_correo"),
                         rs.getString("empleado_rol"),
-                        rs.getDouble("empleado_salario")
+                        rs.getBigDecimal("empleado_salario")
                 );
 
                 return new Prestamo(
                         rs.getInt("id"),
                         cliente,
                         empleado,
-                        rs.getDouble("monto"),
-                        rs.getDouble("interes"),
+                        rs.getBigDecimal("monto"),
+                        rs.getBigDecimal("interes"),
                         rs.getInt("cuotas"),
                         rs.getDate("fecha_inicio").toLocalDate(),
                         rs.getString("estado")
@@ -194,15 +189,13 @@ public class PrestamoDAO {
             }
 
         } catch (SQLException e) {
-
-            System.out.println("Error al buscar préstamo: "
-                    + e.getMessage());
+            throw new CrediYaException("No se pudo consultar el préstamo: " + e.getMessage(), e);
         }
 
         return null;
     }
 
-    // Cambiar estado del préstamo
+
     public boolean cambiarEstado(int id, String estado) {
 
         String sql = """
@@ -220,15 +213,11 @@ public class PrestamoDAO {
             return ps.executeUpdate() > 0;
 
         } catch (SQLException e) {
-
-            System.out.println("Error al cambiar estado: "
-                    + e.getMessage());
-
-            return false;
+            throw new CrediYaException("No se pudo cambiar el estado del préstamo: " + e.getMessage(), e);
         }
     }
 
-    // Eliminar préstamo
+
     public boolean eliminar(int id) {
 
         String sql = "DELETE FROM prestamos WHERE id = ?";
@@ -241,15 +230,11 @@ public class PrestamoDAO {
             return ps.executeUpdate() > 0;
 
         } catch (SQLException e) {
-
-            System.out.println("Error al eliminar préstamo: "
-                    + e.getMessage());
-
-            return false;
+            throw new CrediYaException("No se pudo eliminar el préstamo: " + e.getMessage(), e);
         }
     }
 
-    // Buscar préstamos de un cliente
+
     public List<Prestamo> buscarPorCliente(int clienteId) {
 
         List<Prestamo> prestamos = new ArrayList<>();
@@ -303,15 +288,15 @@ public class PrestamoDAO {
                         rs.getString("empleado_documento"),
                         rs.getString("empleado_correo"),
                         rs.getString("empleado_rol"),
-                        rs.getDouble("empleado_salario")
+                        rs.getBigDecimal("empleado_salario")
                 );
 
                 Prestamo prestamo = new Prestamo(
                         rs.getInt("id"),
                         cliente,
                         empleado,
-                        rs.getDouble("monto"),
-                        rs.getDouble("interes"),
+                        rs.getBigDecimal("monto"),
+                        rs.getBigDecimal("interes"),
                         rs.getInt("cuotas"),
                         rs.getDate("fecha_inicio").toLocalDate(),
                         rs.getString("estado")
@@ -321,9 +306,8 @@ public class PrestamoDAO {
             }
 
         } catch (SQLException e) {
-
-            System.out.println("Error al buscar préstamos del cliente: "
-                    + e.getMessage());
+            throw new CrediYaException("No se pudieron consultar los préstamos del cliente: "
+                    + e.getMessage(), e);
         }
 
         return prestamos;

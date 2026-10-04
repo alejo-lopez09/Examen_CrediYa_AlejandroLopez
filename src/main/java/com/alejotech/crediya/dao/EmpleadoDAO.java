@@ -1,46 +1,52 @@
 package com.alejotech.crediya.dao;
 
 import com.alejotech.crediya.Conexion.Conexion_DB;
+import com.alejotech.crediya.excepciones.CrediYaException;
 import com.alejotech.crediya.modelo.Empleado;
 
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
-public class EmpleadoDAO {
+public class EmpleadoDAO implements EmpleadoRepository {
 
-    // Registrar empleado
+
     public boolean guardar(Empleado empleado) {
 
         String sql = """
-                INSERT INTO empleados
-                (nombre, documento, rol, correo, salario)
-                VALUES (?, ?, ?, ?, ?)
-                """;
+            INSERT INTO empleados
+            (nombre, documento, rol, correo, salario)
+            VALUES (?, ?, ?, ?, ?)
+            """;
 
         try (Connection conexion = Conexion_DB.getConnection();
-             PreparedStatement ps = conexion.prepareStatement(sql)) {
+         PreparedStatement ps = conexion.prepareStatement(
+                 sql,
+                 Statement.RETURN_GENERATED_KEYS)) {
 
             ps.setString(1, empleado.getNombre());
             ps.setString(2, empleado.getDocumento());
             ps.setString(3, empleado.getRol());
             ps.setString(4, empleado.getCorreo());
-            ps.setDouble(5, empleado.getSalario());
+            ps.setBigDecimal(5, empleado.getSalario());
 
             ps.executeUpdate();
 
-            return true;
+            try (ResultSet rs = ps.getGeneratedKeys()) {
 
-        } catch (SQLException e) {
-
-            System.out.println("Error al guardar empleado: "
-                    + e.getMessage());
-
-            return false;
+                if (rs.next()) {
+                    empleado.setId(rs.getInt(1));
+            }
         }
-    }
 
-    // Listar empleados
+        return true;
+
+    } catch (SQLException e) {
+        throw new CrediYaException("No se pudo guardar el empleado: " + e.getMessage(), e);
+    }
+}
+
+
     public List<Empleado> listar() {
 
         List<Empleado> empleados = new ArrayList<>();
@@ -59,22 +65,20 @@ public class EmpleadoDAO {
                         rs.getString("documento"),
                         rs.getString("correo"),
                         rs.getString("rol"),
-                        rs.getDouble("salario")
+                        rs.getBigDecimal("salario")
                 );
 
                 empleados.add(empleado);
             }
 
         } catch (SQLException e) {
-
-            System.out.println("Error al listar empleados: "
-                    + e.getMessage());
+            throw new CrediYaException("No se pudieron consultar los empleados: " + e.getMessage(), e);
         }
 
         return empleados;
     }
 
-    // Buscar empleado por ID
+
     public Empleado buscarPorId(int id) {
 
         String sql = "SELECT * FROM empleados WHERE id = ?";
@@ -94,20 +98,18 @@ public class EmpleadoDAO {
                         rs.getString("documento"),
                         rs.getString("correo"),
                         rs.getString("rol"),
-                        rs.getDouble("salario")
+                        rs.getBigDecimal("salario")
                 );
             }
 
         } catch (SQLException e) {
-
-            System.out.println("Error al buscar empleado: "
-                    + e.getMessage());
+            throw new CrediYaException("No se pudo consultar el empleado: " + e.getMessage(), e);
         }
 
         return null;
     }
 
-    // Actualizar empleado
+
     public boolean actualizar(Empleado empleado) {
 
         String sql = """
@@ -127,21 +129,17 @@ public class EmpleadoDAO {
             ps.setString(2, empleado.getDocumento());
             ps.setString(3, empleado.getRol());
             ps.setString(4, empleado.getCorreo());
-            ps.setDouble(5, empleado.getSalario());
+            ps.setBigDecimal(5, empleado.getSalario());
             ps.setInt(6, empleado.getId());
 
             return ps.executeUpdate() > 0;
 
         } catch (SQLException e) {
-
-            System.out.println("Error al actualizar empleado: "
-                    + e.getMessage());
-
-            return false;
+            throw new CrediYaException("No se pudo actualizar el empleado: " + e.getMessage(), e);
         }
     }
 
-    // Eliminar empleado
+
     public boolean eliminar(int id) {
 
         String sql = "DELETE FROM empleados WHERE id = ?";
@@ -154,11 +152,7 @@ public class EmpleadoDAO {
             return ps.executeUpdate() > 0;
 
         } catch (SQLException e) {
-
-            System.out.println("Error al eliminar empleado: "
-                    + e.getMessage());
-
-            return false;
+            throw new CrediYaException("No se pudo eliminar el empleado: " + e.getMessage(), e);
         }
     }
 }

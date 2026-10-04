@@ -1,14 +1,16 @@
 package com.alejotech.crediya.modelo;
 
+import java.math.BigDecimal;
+
 public class Empleado extends Persona {
 
     private String rol;
-    private double salario;
+    private BigDecimal salario;
 
-    public Empleado(int id, String nombre, String documento, String correo, String rol, double salario) {
+    public Empleado(int id, String nombre, String documento, String correo, String rol, BigDecimal salario) {
         super(id, nombre, documento, correo);
         this.rol = rol;
-        this.salario = salario;
+        this.salario = salario == null ? BigDecimal.ZERO : salario;
     }
 
     public String getRol() {
@@ -19,11 +21,11 @@ public class Empleado extends Persona {
         this.rol = rol;
     }
 
-    public double getSalario() {
+    public BigDecimal getSalario() {
         return salario;
     }
 
-    public void setSalario(double salario) {
+    public void setSalario(BigDecimal salario) {
         this.salario = salario;
     }
 

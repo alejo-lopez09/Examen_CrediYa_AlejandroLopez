@@ -2,6 +2,7 @@ package com.alejotech.crediya.modelo;
 
 
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 public class Pago {
@@ -9,15 +10,11 @@ public class Pago {
     private int id;
     private Prestamo prestamo;
     private LocalDate fechaPago;
-    private double monto;
-
-    // Constructor vacío
-    public Pago() {
-    }
+    private BigDecimal monto;
 
     // Constructor completo
     public Pago(int id, Prestamo prestamo,
-                LocalDate fechaPago, double monto) {
+                LocalDate fechaPago, BigDecimal monto) {
 
         this.id = id;
         this.prestamo = prestamo;
@@ -28,7 +25,7 @@ public class Pago {
     // Constructor sin ID
     public Pago(Prestamo prestamo,
                 LocalDate fechaPago,
-                double monto) {
+                BigDecimal monto) {
 
         this.prestamo = prestamo;
         this.fechaPago = fechaPago;
@@ -61,11 +58,11 @@ public class Pago {
         this.fechaPago = fechaPago;
     }
 
-    public double getMonto() {
+    public BigDecimal getMonto() {
         return monto;
     }
 
-    public void setMonto(double monto) {
+    public void setMonto(BigDecimal monto) {
         this.monto = monto;
     }
 

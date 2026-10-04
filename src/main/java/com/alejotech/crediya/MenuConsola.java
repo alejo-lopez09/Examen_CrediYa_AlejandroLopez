@@ -4,14 +4,17 @@ import com.alejotech.crediya.modelo.Cliente;
 import com.alejotech.crediya.modelo.Empleado;
 import com.alejotech.crediya.modelo.Pago;
 import com.alejotech.crediya.modelo.Prestamo;
+import com.alejotech.crediya.modelo.EstadoPrestamo;
 import com.alejotech.crediya.excepciones.CrediYaException;
+import com.alejotech.crediya.util.ArchivoUtil;
+
+import java.math.BigDecimal;
 
 import com.alejotech.crediya.service.ClienteService;
 import com.alejotech.crediya.service.EmpleadoService;
 import com.alejotech.crediya.service.PagoService;
 import com.alejotech.crediya.service.PrestamoService;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Locale;
@@ -19,7 +22,7 @@ import java.util.Scanner;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
-public class Main {
+public class MenuConsola {
 
     private static final Scanner scanner = new Scanner(System.in);
 
@@ -28,32 +31,24 @@ public class Main {
     private static final PrestamoService prestamoService = new PrestamoService();
     private static final PagoService pagoService = new PagoService();
 
-    private static final String PENDIENTE = "PENDIENTE";
-    private static final String PAGADO = "PAGADO";
+    private static final EstadoPrestamo PENDIENTE = EstadoPrestamo.PENDIENTE;
+    private static final EstadoPrestamo PAGADO = EstadoPrestamo.PAGADO;
     private static final BigDecimal MONTO_GRANDE = BigDecimal.valueOf(1_000_000);
     private static final Locale CO = Locale.forLanguageTag("es-CO");
 
     /** Una opción de menú: texto + acción a ejecutar. */
     private record Opcion(String texto, Runnable accion) {}
 
-    public static void main(String[] args) {
+    public static void iniciar() {
 
-        try {
-            empleadoService.sincronizarRespaldo();
-            clienteService.sincronizarRespaldo();
-            prestamoService.sincronizarRespaldo();
-            pagoService.sincronizarRespaldo();
-        } catch (CrediYaException e) {
-            System.out.println("No se pudieron sincronizar los respaldos iniciales: "
-                    + e.getMessage());
-        }
+        ArchivoUtil.crearCarpetaData();
 
         ejecutarMenu("CREDIYA S.A.S. - SISTEMA DE CARTERA", "Salir",
-                new Opcion("Gestión de empleados", Main::menuEmpleados),
-                new Opcion("Gestión de clientes", Main::menuClientes),
-                new Opcion("Gestión de préstamos", Main::menuPrestamos),
-                new Opcion("Gestión de pagos", Main::menuPagos),
-                new Opcion("Reportes", Main::menuReportes));
+                new Opcion("Gestión de empleados", MenuConsola::menuEmpleados),
+                new Opcion("Gestión de clientes", MenuConsola::menuClientes),
+                new Opcion("Gestión de préstamos", MenuConsola::menuPrestamos),
+                new Opcion("Gestión de pagos", MenuConsola::menuPagos),
+                new Opcion("Reportes", MenuConsola::menuReportes));
 
         System.out.println("\nCerrando CrediYa...");
         scanner.close();
@@ -102,11 +97,11 @@ public class Main {
 
     private static void menuEmpleados() {
         ejecutarMenu("EMPLEADOS", "Volver",
-                new Opcion("Registrar empleado", Main::registrarEmpleado),
-                new Opcion("Listar empleados", Main::listarEmpleados),
-                new Opcion("Buscar empleado", Main::buscarEmpleado),
-                new Opcion("Actualizar empleado", Main::actualizarEmpleado),
-                new Opcion("Eliminar empleado", Main::eliminarEmpleado));
+                new Opcion("Registrar empleado", MenuConsola::registrarEmpleado),
+                new Opcion("Listar empleados", MenuConsola::listarEmpleados),
+                new Opcion("Buscar empleado", MenuConsola::buscarEmpleado),
+                new Opcion("Actualizar empleado", MenuConsola::actualizarEmpleado),
+                new Opcion("Eliminar empleado", MenuConsola::eliminarEmpleado));
     }
 
     private static void registrarEmpleado() {
@@ -119,7 +114,7 @@ public class Main {
                 leerTexto("Documento: "),
                 leerTexto("Correo: "),
                 leerTexto("Rol: "),
-                leerBigDecimalPositivo("Salario: ")
+                leerDecimalPositivo("Salario: ")
         );
 
         resultado(empleadoService.registrar(empleado),
@@ -168,7 +163,7 @@ public class Main {
         empleado.setDocumento(leerTextoOpcional("Documento", empleado.getDocumento()));
         empleado.setCorreo(leerTextoOpcional("Correo", empleado.getCorreo()));
         empleado.setRol(leerTextoOpcional("Rol", empleado.getRol()));
-        empleado.setSalario(leerBigDecimalOpcional("Salario", empleado.getSalario()));
+        empleado.setSalario(leerDecimalOpcional("Salario", empleado.getSalario()));
 
         resultado(empleadoService.actualizar(empleado),
                 "Empleado actualizado correctamente.",
@@ -203,12 +198,12 @@ public class Main {
 
     private static void menuClientes() {
         ejecutarMenu("CLIENTES", "Volver",
-                new Opcion("Registrar cliente", Main::registrarCliente),
-                new Opcion("Listar clientes", Main::listarClientes),
-                new Opcion("Buscar cliente", Main::buscarCliente),
-                new Opcion("Consultar préstamos del cliente", Main::consultarPrestamosCliente),
-                new Opcion("Actualizar cliente", Main::actualizarCliente),
-                new Opcion("Eliminar cliente", Main::eliminarCliente));
+                new Opcion("Registrar cliente", MenuConsola::registrarCliente),
+                new Opcion("Listar clientes", MenuConsola::listarClientes),
+                new Opcion("Buscar cliente", MenuConsola::buscarCliente),
+                new Opcion("Consultar préstamos del cliente", MenuConsola::consultarPrestamosCliente),
+                new Opcion("Actualizar cliente", MenuConsola::actualizarCliente),
+                new Opcion("Eliminar cliente", MenuConsola::eliminarCliente));
     }
 
     private static void registrarCliente() {
@@ -324,11 +319,11 @@ public class Main {
 
     private static void menuPrestamos() {
         ejecutarMenu("PRÉSTAMOS", "Volver",
-                new Opcion("Crear préstamo", Main::crearPrestamo),
-                new Opcion("Listar préstamos", Main::listarPrestamos),
-                new Opcion("Buscar préstamo", Main::buscarPrestamo),
-                new Opcion("Cambiar estado", Main::cambiarEstadoPrestamo),
-                new Opcion("Eliminar préstamo", Main::eliminarPrestamo));
+                new Opcion("Crear préstamo", MenuConsola::crearPrestamo),
+                new Opcion("Listar préstamos", MenuConsola::listarPrestamos),
+                new Opcion("Buscar préstamo", MenuConsola::buscarPrestamo),
+                new Opcion("Cambiar estado", MenuConsola::cambiarEstadoPrestamo),
+                new Opcion("Eliminar préstamo", MenuConsola::eliminarPrestamo));
     }
 
     private static void crearPrestamo() {
@@ -349,12 +344,12 @@ public class Main {
             return;
         }
 
-        BigDecimal monto = leerBigDecimalPositivo("Monto del préstamo: ");
-        BigDecimal interes = leerBigDecimalNoNegativo("Interés (%): ");
+        BigDecimal monto = leerDecimalPositivo("Monto del préstamo: ");
+        BigDecimal interes = leerDecimalNoNegativo("Interés (%): ");
         int cuotas = leerEnteroPositivo("Número de cuotas: ");
 
         Prestamo prestamo = new Prestamo(
-                cliente, empleado, monto, interes, cuotas, LocalDate.now(), PENDIENTE
+                cliente, empleado, monto, interes, cuotas, LocalDate.now(), PENDIENTE.name()
         );
 
         System.out.println();
@@ -421,7 +416,7 @@ public class Main {
 
         int opcion = leerEntero("Nuevo estado: ");
 
-        String estado = switch (opcion) {
+        EstadoPrestamo estado = switch (opcion) {
             case 1 -> PENDIENTE;
             case 2 -> PAGADO;
             default -> null;
@@ -432,7 +427,7 @@ public class Main {
             return;
         }
 
-        resultado(prestamoService.cambiarEstado(id, estado),
+        resultado(prestamoService.cambiarEstado(id, String.valueOf(estado)),
                 "Estado actualizado correctamente.",
                 "No se pudo actualizar el estado.");
     }
@@ -456,12 +451,12 @@ public class Main {
 
     private static void menuPagos() {
         ejecutarMenu("PAGOS", "Volver",
-                new Opcion("Registrar pago", Main::registrarPago),
-                new Opcion("Listar pagos", Main::listarPagos),
-                new Opcion("Ver historial de préstamo", Main::historialPagos),
-                new Opcion("Consultar saldo pendiente", Main::consultarSaldo),
-                new Opcion("Consultar total pagado", Main::consultarTotalPagado),
-                new Opcion("Eliminar pago", Main::eliminarPago));
+                new Opcion("Registrar pago", MenuConsola::registrarPago),
+                new Opcion("Listar pagos", MenuConsola::listarPagos),
+                new Opcion("Ver historial de préstamo", MenuConsola::historialPagos),
+                new Opcion("Consultar saldo pendiente", MenuConsola::consultarSaldo),
+                new Opcion("Consultar total pagado", MenuConsola::consultarTotalPagado),
+                new Opcion("Eliminar pago", MenuConsola::eliminarPago));
     }
 
     private static void registrarPago() {
@@ -479,12 +474,12 @@ public class Main {
         BigDecimal saldo = pagoService.saldoPendiente(prestamoId);
         System.out.println("Saldo pendiente: " + dinero(saldo));
 
-        if (saldo.signum() <= 0) {
+        if (saldo.compareTo(BigDecimal.ZERO) <= 0) {
             System.out.println("Este préstamo ya está pagado.");
             return;
         }
 
-        BigDecimal monto = leerBigDecimalPositivo("Monto del pago: ");
+        BigDecimal monto = leerDecimalPositivo("Monto del pago: ");
 
         if (monto.compareTo(saldo) > 0) {
             System.out.println("El pago no puede superar el saldo pendiente.");
@@ -525,6 +520,7 @@ public class Main {
 
         pagos.forEach(p -> System.out.println(
                 "ID: " + p.getId()
+                        + " | Préstamo: " + (p.getPrestamo() != null ? p.getPrestamo().getId() : "N/D")
                         + " | Fecha: " + p.getFechaPago()
                         + " | Monto: " + dinero(p.getMonto())));
     }
@@ -561,18 +557,19 @@ public class Main {
                 new Opcion("Préstamos pendientes",
                         () -> reporte("PRÉSTAMOS PENDIENTES",
                                 "No hay préstamos pendientes.",
-                                p -> PENDIENTE.equalsIgnoreCase(p.getEstado()))),
+                                p -> PENDIENTE.name().equals(p.getEstado()))),
                 new Opcion("Préstamos pagados",
                         () -> reporte("PRÉSTAMOS PAGADOS",
                                 "No hay préstamos pagados.",
-                                p -> PAGADO.equalsIgnoreCase(p.getEstado()))),
+                                p -> PAGADO.name().equals(p.getEstado()))),
                 new Opcion("Préstamos mayores a " + dinero(MONTO_GRANDE),
                         () -> reporte("PRÉSTAMOS MAYORES A " + dinero(MONTO_GRANDE),
                                 "No existen préstamos superiores a " + dinero(MONTO_GRANDE) + ".",
                                 p -> p.getMonto().compareTo(MONTO_GRANDE) > 0)),
-                new Opcion("Préstamos vencidos", Main::reportePrestamosVencidos),
-                new Opcion("Clientes morosos", Main::reporteClientesMorosos),
-                new Opcion("Clientes con préstamos", Main::reporteClientesConPrestamos));
+                new Opcion("Préstamos vencidos", MenuConsola::reportePrestamosVencidos),
+                new Opcion("Clientes morosos", MenuConsola::reporteClientesMorosos),
+                new Opcion("Clientes con préstamos", MenuConsola::reporteClientesConPrestamos),
+                new Opcion("Consultar archivos de respaldo", MenuConsola::reporteArchivos));
     }
 
     private static void reporte(String titulo, String mensajeVacio, Predicate<Prestamo> filtro) {
@@ -609,32 +606,30 @@ public class Main {
     }
 
     private static void reportePrestamosVencidos() {
-        List<Prestamo> vencidos = prestamoService.listar().stream()
-                .filter(Prestamo::estaVencido)
-                .filter(p -> pagoService.saldoPendiente(p.getId()).signum() > 0)
-                .toList();
-        System.out.println("\n----- PRÉSTAMOS VENCIDOS -----");
-        if (vencidos.isEmpty()) {
-            System.out.println("No hay préstamos vencidos.");
-            return;
-        }
-        mostrarPrestamos(vencidos);
+        reporte("PRÉSTAMOS VENCIDOS",
+                "No hay préstamos vencidos.",
+                Prestamo::estaVencido);
     }
 
     private static void reporteClientesMorosos() {
         System.out.println("\n----- CLIENTES MOROSOS -----");
-        List<String> morosos = prestamoService.listar().stream()
+
+        prestamoService.listar().stream()
                 .filter(Prestamo::estaVencido)
-                .filter(p -> pagoService.saldoPendiente(p.getId()).signum() > 0)
-                .map(p -> p.getCliente().getId() + " | " + p.getCliente().getNombre()
-                        + " | Documento: " + p.getCliente().getDocumento())
+                .map(p -> p.getCliente().getNombre() + " (documento: "
+                        + p.getCliente().getDocumento() + ")")
                 .distinct()
-                .toList();
-        if (morosos.isEmpty()) {
-            System.out.println("No hay clientes morosos.");
-            return;
-        }
-        morosos.forEach(System.out::println);
+                .forEach(System.out::println);
+    }
+
+    private static void reporteArchivos() {
+        System.out.println("\n----- ARCHIVOS DE RESPALDO -----");
+        List.of("empleados.txt", "clientes.txt", "prestamos.txt", "pagos.txt")
+                .forEach(archivo -> {
+                    List<String> lineas = ArchivoUtil.leer(archivo);
+                    System.out.println(archivo + ": " + lineas.size() + " registros");
+                    lineas.forEach(linea -> System.out.println("  " + linea));
+                });
     }
 
     // =========================================================
@@ -661,44 +656,39 @@ public class Main {
         return entrada.isEmpty() ? actual : entrada;
     }
 
-    private static BigDecimal leerBigDecimalOpcional(String campo, BigDecimal actual) {
+    private static BigDecimal leerDecimalOpcional(String campo, BigDecimal actual) {
         while (true) {
             System.out.print(campo + " [" + actual + "]: ");
             String entrada = scanner.nextLine().trim();
-
-            if (entrada.isEmpty()) {
-                return actual;
-            }
-
+            if (entrada.isEmpty()) return actual;
             try {
                 BigDecimal valor = new BigDecimal(entrada);
-                if (valor.signum() > 0) {
-                    return valor;
-                }
+                if (valor.compareTo(BigDecimal.ZERO) > 0) return valor;
             } catch (NumberFormatException ignored) {
             }
-
             System.out.println("Ingrese un número mayor que 0.");
         }
     }
 
     private static int leerEntero(String mensaje) {
-        return leer(mensaje, Integer::parseInt, n -> true, "Ingrese un número entero válido.");
+        return leer(mensaje, Integer::parseInt,
+                n -> true, "Ingrese un número entero válido.");
     }
 
     private static int leerEnteroPositivo(String mensaje) {
-        return leer(mensaje, Integer::parseInt, n -> n > 0, "Ingrese un entero mayor que 0.");
+        return leer(mensaje, Integer::parseInt,
+                n -> n > 0, "Ingrese un entero mayor que 0.");
     }
 
-    private static BigDecimal leerBigDecimalPositivo(String mensaje) {
+    private static BigDecimal leerDecimalPositivo(String mensaje) {
         return leer(mensaje, BigDecimal::new,
-                valor -> valor.signum() > 0,
+                d -> d.compareTo(BigDecimal.ZERO) > 0,
                 "Ingrese un número mayor que 0.");
     }
 
-    private static BigDecimal leerBigDecimalNoNegativo(String mensaje) {
+    private static BigDecimal leerDecimalNoNegativo(String mensaje) {
         return leer(mensaje, BigDecimal::new,
-                valor -> valor.signum() >= 0,
+                d -> d.compareTo(BigDecimal.ZERO) >= 0,
                 "Ingrese un número mayor o igual a 0.");
     }
 

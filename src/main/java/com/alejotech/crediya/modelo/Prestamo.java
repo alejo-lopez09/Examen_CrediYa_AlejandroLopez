@@ -1,5 +1,7 @@
 package com.alejotech.crediya.modelo;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 
 public class Prestamo {
@@ -7,61 +9,61 @@ public class Prestamo {
     private int id;
     private Cliente cliente;
     private Empleado empleado;
-    private double monto;
-    private double interes;
+    private BigDecimal monto;
+    private BigDecimal interes;
     private int cuotas;
     private LocalDate fechaInicio;
     private String estado;
 
-    // Constructor vacío
-    public Prestamo() {
-    }
 
-    // Constructor completo
     public Prestamo(int id, Cliente cliente, Empleado empleado,
-                    double monto, double interes, int cuotas,
+                    BigDecimal monto, BigDecimal interes, int cuotas,
                     LocalDate fechaInicio, String estado) {
 
         this.id = id;
         this.cliente = cliente;
         this.empleado = empleado;
-        this.monto = monto;
-        this.interes = interes;
+        this.monto = monto == null ? BigDecimal.ZERO : monto;
+        this.interes = interes == null ? BigDecimal.ZERO : interes;
         this.cuotas = cuotas;
         this.fechaInicio = fechaInicio;
         this.estado = estado;
     }
 
-    // Constructor sin ID
     public Prestamo(Cliente cliente, Empleado empleado,
-                    double monto, double interes, int cuotas,
+                    BigDecimal monto, BigDecimal interes, int cuotas,
                     LocalDate fechaInicio, String estado) {
 
         this.cliente = cliente;
         this.empleado = empleado;
-        this.monto = monto;
-        this.interes = interes;
+        this.monto = monto == null ? BigDecimal.ZERO : monto;
+        this.interes = interes == null ? BigDecimal.ZERO : interes;
         this.cuotas = cuotas;
         this.fechaInicio = fechaInicio;
         this.estado = estado;
     }
 
-    // Calcular monto total con interés
-    public double calcularMontoTotal() {
-        return monto + (monto * interes / 100);
+    public BigDecimal calcularMontoTotal() {
+        return monto.add(monto.multiply(interes)
+                .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP));
     }
 
-    // Calcular cuota mensual
-    public double calcularCuotaMensual() {
+    public BigDecimal calcularCuotaMensual() {
 
         if (cuotas <= 0) {
-            return 0;
+            return BigDecimal.ZERO;
         }
 
-        return calcularMontoTotal() / cuotas;
+        return calcularMontoTotal().divide(
+                BigDecimal.valueOf(cuotas), 2, RoundingMode.HALF_UP);
     }
 
-    // Getters y setters
+    public boolean estaVencido() {
+        return "PENDIENTE".equalsIgnoreCase(estado)
+                && fechaInicio != null
+                && cuotas > 0
+                && fechaInicio.plusMonths(cuotas).isBefore(LocalDate.now());
+    }
 
     public int getId() {
         return id;
@@ -87,19 +89,19 @@ public class Prestamo {
         this.empleado = empleado;
     }
 
-    public double getMonto() {
+    public BigDecimal getMonto() {
         return monto;
     }
 
-    public void setMonto(double monto) {
+    public void setMonto(BigDecimal monto) {
         this.monto = monto;
     }
 
-    public double getInteres() {
+    public BigDecimal getInteres() {
         return interes;
     }
 
-    public void setInteres(double interes) {
+    public void setInteres(BigDecimal interes) {
         this.interes = interes;
     }
 
@@ -140,4 +142,6 @@ public class Prestamo {
                 ", estado='" + estado + '\'' +
                 '}';
     }
+
+
 }

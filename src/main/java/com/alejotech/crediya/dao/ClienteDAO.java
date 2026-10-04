@@ -1,15 +1,16 @@
 package com.alejotech.crediya.dao;
 
 import com.alejotech.crediya.Conexion.Conexion_DB;
+import com.alejotech.crediya.excepciones.CrediYaException;
 import com.alejotech.crediya.modelo.Cliente;
 
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ClienteDAO {
+public class ClienteDAO implements ClienteRepository {
 
-    // Registrar cliente
+
     public boolean guardar(Cliente cliente) {
 
         String sql = """
@@ -31,15 +32,11 @@ public class ClienteDAO {
             return true;
 
         } catch (SQLException e) {
-
-            System.out.println("Error al guardar cliente: "
-                    + e.getMessage());
-
-            return false;
+            throw new CrediYaException("No se pudo guardar el cliente: " + e.getMessage(), e);
         }
     }
 
-    // Listar clientes
+
     public List<Cliente> listar() {
 
         List<Cliente> clientes = new ArrayList<>();
@@ -64,15 +61,13 @@ public class ClienteDAO {
             }
 
         } catch (SQLException e) {
-
-            System.out.println("Error al listar clientes: "
-                    + e.getMessage());
+            throw new CrediYaException("No se pudieron consultar los clientes: " + e.getMessage(), e);
         }
 
         return clientes;
     }
 
-    // Buscar cliente por ID
+
     public Cliente buscarPorId(int id) {
 
         String sql = "SELECT * FROM clientes WHERE id = ?";
@@ -96,15 +91,13 @@ public class ClienteDAO {
             }
 
         } catch (SQLException e) {
-
-            System.out.println("Error al buscar cliente: "
-                    + e.getMessage());
+            throw new CrediYaException("No se pudo consultar el cliente: " + e.getMessage(), e);
         }
 
         return null;
     }
 
-    // Actualizar cliente
+
     public boolean actualizar(Cliente cliente) {
 
         String sql = """
@@ -128,15 +121,11 @@ public class ClienteDAO {
             return ps.executeUpdate() > 0;
 
         } catch (SQLException e) {
-
-            System.out.println("Error al actualizar cliente: "
-                    + e.getMessage());
-
-            return false;
+            throw new CrediYaException("No se pudo actualizar el cliente: " + e.getMessage(), e);
         }
     }
 
-    // Eliminar cliente
+
     public boolean eliminar(int id) {
 
         String sql = "DELETE FROM clientes WHERE id = ?";
@@ -149,11 +138,7 @@ public class ClienteDAO {
             return ps.executeUpdate() > 0;
 
         } catch (SQLException e) {
-
-            System.out.println("Error al eliminar cliente: "
-                    + e.getMessage());
-
-            return false;
+            throw new CrediYaException("No se pudo eliminar el cliente: " + e.getMessage(), e);
         }
     }
 }

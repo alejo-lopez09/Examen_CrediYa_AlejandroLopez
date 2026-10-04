@@ -1,224 +1,274 @@
 package com.alejotech.crediya.dao;
 
 import com.alejotech.crediya.Conexion.Conexion_DB;
+import com.alejotech.crediya.excepciones.CrediYaException;
 import com.alejotech.crediya.modelo.Pago;
+import com.alejotech.crediya.modelo.Prestamo;
 
-import java.sql.*;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.sql.Connection;
+import java.sql.Date;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class PagoDAO {
+public class PagoDAO implements PagoRepository {
 
-    // Registrar pago
+    @Override
     public boolean guardar(Pago pago) {
-
-        String sql = """
-                INSERT INTO pagos
-                (prestamo_id, fecha_pago, monto)
+        String lockSql = "SELECT monto, interes FROM prestamos WHERE id = ? FOR UPDATE";
+        String totalPagadoSql = "SELECT COALESCE(SUM(monto), 0) FROM pagos WHERE prestamo_id = ?";
+        String insertSql = """
+                INSERT INTO pagos (prestamo_id, fecha_pago, monto)
                 VALUES (?, ?, ?)
                 """;
+        String estadoSql = "UPDATE prestamos SET estado = ? WHERE id = ?";
 
-        try (Connection conexion = Conexion_DB.getConnection();
-             PreparedStatement ps = conexion.prepareStatement(sql)) {
+        try (Connection conexion = Conexion_DB.getConnection()) {
+            conexion.setTransactionIsolation(Connection.TRANSACTION_READ_COMMITTED);
+            conexion.setAutoCommit(false);
+            try {
+                BigDecimal totalPrestamo;
+                try (PreparedStatement ps = conexion.prepareStatement(lockSql)) {
+                    ps.setInt(1, pago.getPrestamo().getId());
+                    try (ResultSet rs = ps.executeQuery()) {
+                        if (!rs.next()) {
+                            conexion.rollback();
+                            return false;
+                        }
+                        BigDecimal monto = rs.getBigDecimal("monto");
+                        BigDecimal interes = rs.getBigDecimal("interes");
+                        totalPrestamo = monto.add(monto.multiply(interes)
+                                .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP));
+                    }
+                }
 
-            ps.setInt(1, pago.getPrestamo().getId());
+                BigDecimal totalPagado;
+                try (PreparedStatement ps = conexion.prepareStatement(totalPagadoSql)) {
+                    ps.setInt(1, pago.getPrestamo().getId());
+                    try (ResultSet rs = ps.executeQuery()) {
+                        rs.next();
+                        totalPagado = rs.getBigDecimal(1);
+                    }
+                }
 
-            ps.setDate(
-                    2,
-                    Date.valueOf(pago.getFechaPago())
-            );
+                BigDecimal saldoPendiente = totalPrestamo.subtract(totalPagado);
+                if (pago.getMonto().compareTo(saldoPendiente) > 0) {
+                    conexion.rollback();
+                    return false;
+                }
 
-            ps.setDouble(3, pago.getMonto());
+                try (PreparedStatement ps = conexion.prepareStatement(insertSql)) {
+                    ps.setInt(1, pago.getPrestamo().getId());
+                    ps.setDate(2, Date.valueOf(pago.getFechaPago()));
+                    ps.setBigDecimal(3, pago.getMonto());
+                    ps.executeUpdate();
+                }
 
-            ps.executeUpdate();
+                BigDecimal nuevoSaldo = saldoPendiente.subtract(pago.getMonto());
+                try (PreparedStatement ps = conexion.prepareStatement(estadoSql)) {
+                    ps.setString(1, nuevoSaldo.signum() <= 0 ? "PAGADO" : "PENDIENTE");
+                    ps.setInt(2, pago.getPrestamo().getId());
+                    ps.executeUpdate();
+                }
 
-            return true;
-
+                conexion.commit();
+                return true;
+            } catch (SQLException | RuntimeException e) {
+                rollback(conexion, e);
+                throw e;
+            }
         } catch (SQLException e) {
-
-            System.out.println("Error al guardar pago: "
-                    + e.getMessage());
-
-            return false;
+            throw new CrediYaException(
+                    "No se pudo registrar el pago en la base de datos: " + e.getMessage(), e);
         }
     }
 
-    // Listar todos los pagos
+    @Override
     public List<Pago> listar() {
-
         List<Pago> pagos = new ArrayList<>();
-
         String sql = """
-                SELECT
-                    p.id,
-                    p.prestamo_id,
-                    p.fecha_pago,
-                    p.monto
-
-                FROM pagos p
-
-                ORDER BY p.fecha_pago DESC
+                SELECT id, prestamo_id, fecha_pago, monto
+                FROM pagos
+                ORDER BY fecha_pago DESC, id DESC
                 """;
 
         try (Connection conexion = Conexion_DB.getConnection();
              PreparedStatement ps = conexion.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
-
             while (rs.next()) {
-
-                Pago pago = new Pago();
-
-                pago.setId(rs.getInt("id"));
-                pago.setFechaPago(
-                        rs.getDate("fecha_pago").toLocalDate()
-                );
-                pago.setMonto(rs.getDouble("monto"));
-
-                pagos.add(pago);
+                pagos.add(mapear(rs));
             }
-
+            return pagos;
         } catch (SQLException e) {
-
-            System.out.println("Error al listar pagos: "
-                    + e.getMessage());
+            throw new CrediYaException("No se pudieron consultar los pagos: " + e.getMessage(), e);
         }
-
-        return pagos;
     }
 
-    // Buscar pagos de un préstamo
+    @Override
     public List<Pago> buscarPorPrestamo(int prestamoId) {
-
         List<Pago> pagos = new ArrayList<>();
-
         String sql = """
-                SELECT
-                    id,
-                    prestamo_id,
-                    fecha_pago,
-                    monto
-
+                SELECT id, prestamo_id, fecha_pago, monto
                 FROM pagos
-
                 WHERE prestamo_id = ?
-
-                ORDER BY fecha_pago DESC
+                ORDER BY fecha_pago DESC, id DESC
                 """;
 
         try (Connection conexion = Conexion_DB.getConnection();
              PreparedStatement ps = conexion.prepareStatement(sql)) {
-
             ps.setInt(1, prestamoId);
-
-            ResultSet rs = ps.executeQuery();
-
-            while (rs.next()) {
-
-                Pago pago = new Pago();
-
-                pago.setId(rs.getInt("id"));
-                pago.setFechaPago(
-                        rs.getDate("fecha_pago").toLocalDate()
-                );
-                pago.setMonto(rs.getDouble("monto"));
-
-                pagos.add(pago);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    pagos.add(mapear(rs));
+                }
             }
-
+            return pagos;
         } catch (SQLException e) {
-
-            System.out.println("Error al buscar pagos: "
-                    + e.getMessage());
+            throw new CrediYaException("No se pudo consultar el historial de pagos: "
+                    + e.getMessage(), e);
         }
-
-        return pagos;
     }
 
-    // Calcular cuánto se ha pagado de un préstamo
-    public double totalPagado(int prestamoId) {
+    private Pago mapear(ResultSet rs) throws SQLException {
+        Prestamo prestamo = new Prestamo(
+                rs.getInt("prestamo_id"), null, null, BigDecimal.ZERO,
+                BigDecimal.ZERO, 0, null, "PENDIENTE");
+        return new Pago(rs.getInt("id"), prestamo,
+                rs.getDate("fecha_pago").toLocalDate(), rs.getBigDecimal("monto"));
+    }
 
-        String sql = """
-                SELECT COALESCE(SUM(monto), 0)
-                FROM pagos
-                WHERE prestamo_id = ?
-                """;
-
+    @Override
+    public BigDecimal totalPagado(int prestamoId) {
+        String sql = "SELECT COALESCE(SUM(monto), 0) FROM pagos WHERE prestamo_id = ?";
         try (Connection conexion = Conexion_DB.getConnection();
              PreparedStatement ps = conexion.prepareStatement(sql)) {
-
             ps.setInt(1, prestamoId);
-
-            ResultSet rs = ps.executeQuery();
-
-            if (rs.next()) {
-                return rs.getDouble(1);
+            try (ResultSet rs = ps.executeQuery()) {
+                rs.next();
+                return rs.getBigDecimal(1);
             }
-
         } catch (SQLException e) {
-
-            System.out.println("Error al calcular total pagado: "
-                    + e.getMessage());
+            throw new CrediYaException("No se pudo calcular el total pagado: " + e.getMessage(), e);
         }
-
-        return 0;
     }
 
-    // Calcular saldo pendiente
-    public double calcularSaldoPendiente(int prestamoId) {
-
+    @Override
+    public BigDecimal calcularSaldoPendiente(int prestamoId) {
         String sql = """
-                SELECT
-                    p.monto + (p.monto * p.interes / 100)
-                    - COALESCE(SUM(pg.monto), 0)
-
+                SELECT ROUND(p.monto + (p.monto * p.interes / 100), 2)
+                       - COALESCE(SUM(pg.monto), 0)
                 FROM prestamos p
-
-                LEFT JOIN pagos pg
-                    ON p.id = pg.prestamo_id
-
+                LEFT JOIN pagos pg ON p.id = pg.prestamo_id
                 WHERE p.id = ?
-
                 GROUP BY p.id
                 """;
 
         try (Connection conexion = Conexion_DB.getConnection();
              PreparedStatement ps = conexion.prepareStatement(sql)) {
-
             ps.setInt(1, prestamoId);
-
-            ResultSet rs = ps.executeQuery();
-
-            if (rs.next()) {
-                return Math.max(0, rs.getDouble(1));
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) {
+                    return BigDecimal.ZERO;
+                }
+                BigDecimal saldo = rs.getBigDecimal(1);
+                return saldo == null ? BigDecimal.ZERO : saldo.max(BigDecimal.ZERO);
             }
-
         } catch (SQLException e) {
-
-            System.out.println("Error al calcular saldo: "
-                    + e.getMessage());
+            throw new CrediYaException("No se pudo calcular el saldo pendiente: " + e.getMessage(), e);
         }
-
-        return 0;
     }
 
-    // Eliminar pago
+    @Override
     public boolean eliminar(int id) {
+        String buscarPrestamoSql = "SELECT prestamo_id FROM pagos WHERE id = ?";
+        String lockSql = "SELECT id FROM prestamos WHERE id = ? FOR UPDATE";
+        String deleteSql = "DELETE FROM pagos WHERE id = ?";
+        String pagosSql = "SELECT COALESCE(SUM(monto), 0) FROM pagos WHERE prestamo_id = ?";
+        String prestamoSql = "SELECT monto, interes FROM prestamos WHERE id = ?";
+        String estadoSql = "UPDATE prestamos SET estado = ? WHERE id = ?";
 
-        String sql = "DELETE FROM pagos WHERE id = ?";
+        try (Connection conexion = Conexion_DB.getConnection()) {
+            conexion.setTransactionIsolation(Connection.TRANSACTION_READ_COMMITTED);
+            conexion.setAutoCommit(false);
+            try {
+                int prestamoId;
+                try (PreparedStatement ps = conexion.prepareStatement(buscarPrestamoSql)) {
+                    ps.setInt(1, id);
+                    try (ResultSet rs = ps.executeQuery()) {
+                        if (!rs.next()) {
+                            conexion.rollback();
+                            return false;
+                        }
+                        prestamoId = rs.getInt(1);
+                    }
+                }
 
-        try (Connection conexion = Conexion_DB.getConnection();
-             PreparedStatement ps = conexion.prepareStatement(sql)) {
+                try (PreparedStatement ps = conexion.prepareStatement(lockSql)) {
+                    ps.setInt(1, prestamoId);
+                    try (ResultSet rs = ps.executeQuery()) {
+                        if (!rs.next()) {
+                            conexion.rollback();
+                            return false;
+                        }
+                    }
+                }
 
-            ps.setInt(1, id);
+                try (PreparedStatement ps = conexion.prepareStatement(deleteSql)) {
+                    ps.setInt(1, id);
+                    if (ps.executeUpdate() == 0) {
+                        conexion.rollback();
+                        return false;
+                    }
+                }
 
-            return ps.executeUpdate() > 0;
+                BigDecimal totalPrestamo;
+                try (PreparedStatement ps = conexion.prepareStatement(prestamoSql)) {
+                    ps.setInt(1, prestamoId);
+                    try (ResultSet rs = ps.executeQuery()) {
+                        rs.next();
+                        BigDecimal monto = rs.getBigDecimal("monto");
+                        BigDecimal interes = rs.getBigDecimal("interes");
+                        totalPrestamo = monto.add(monto.multiply(interes)
+                                .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP));
+                    }
+                }
 
+                BigDecimal totalPagado;
+                try (PreparedStatement ps = conexion.prepareStatement(pagosSql)) {
+                    ps.setInt(1, prestamoId);
+                    try (ResultSet rs = ps.executeQuery()) {
+                        rs.next();
+                        totalPagado = rs.getBigDecimal(1);
+                    }
+                }
+
+                try (PreparedStatement ps = conexion.prepareStatement(estadoSql)) {
+                    ps.setString(1, totalPagado.compareTo(totalPrestamo) >= 0
+                            ? "PAGADO" : "PENDIENTE");
+                    ps.setInt(2, prestamoId);
+                    ps.executeUpdate();
+                }
+
+                conexion.commit();
+                return true;
+            } catch (SQLException | RuntimeException e) {
+                rollback(conexion, e);
+                throw e;
+            }
         } catch (SQLException e) {
+            throw new CrediYaException("No se pudo eliminar el pago: " + e.getMessage(), e);
+        }
+    }
 
-            System.out.println("Error al eliminar pago: "
-                    + e.getMessage());
-
-            return false;
+    private void rollback(Connection conexion, Exception causa) {
+        try {
+            conexion.rollback();
+        } catch (SQLException e) {
+            causa.addSuppressed(e);
         }
     }
 }
