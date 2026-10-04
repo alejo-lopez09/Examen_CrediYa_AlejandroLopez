@@ -4,7 +4,7 @@ Aplicación de consola Java para administrar empleados, clientes, préstamos y p
 
 ## Requisitos
 
-- JDK 17 o posterior.
+- JDK 25 o posterior (Java 25 es la versión LTS objetivo del proyecto).
 - Maven 3.8 o posterior.
 - MySQL 8.0 o posterior.
 
