@@ -1,7 +1,8 @@
 package com.alejotech.crediya.dao;
 
-import com.alejotech.crediya.Conexion.Conexion_DB;
+import com.alejotech.crediya.conexion.ConexionDB;
 import com.alejotech.crediya.excepciones.CrediYaException;
+import com.alejotech.crediya.excepciones.RecursoEnUsoException;
 import com.alejotech.crediya.modelo.Empleado;
 
 import java.sql.*;
@@ -19,7 +20,7 @@ public class EmpleadoDAO implements EmpleadoRepository {
             VALUES (?, ?, ?, ?, ?)
             """;
 
-        try (Connection conexion = Conexion_DB.getConnection();
+        try (Connection conexion = ConexionDB.getConnection();
          PreparedStatement ps = conexion.prepareStatement(
                  sql,
                  Statement.RETURN_GENERATED_KEYS)) {
@@ -53,7 +54,7 @@ public class EmpleadoDAO implements EmpleadoRepository {
 
         String sql = "SELECT * FROM empleados";
 
-        try (Connection conexion = Conexion_DB.getConnection();
+        try (Connection conexion = ConexionDB.getConnection();
              PreparedStatement ps = conexion.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
 
@@ -83,7 +84,7 @@ public class EmpleadoDAO implements EmpleadoRepository {
 
         String sql = "SELECT * FROM empleados WHERE id = ?";
 
-        try (Connection conexion = Conexion_DB.getConnection();
+        try (Connection conexion = ConexionDB.getConnection();
              PreparedStatement ps = conexion.prepareStatement(sql)) {
 
             ps.setInt(1, id);
@@ -122,7 +123,7 @@ public class EmpleadoDAO implements EmpleadoRepository {
                 WHERE id = ?
                 """;
 
-        try (Connection conexion = Conexion_DB.getConnection();
+        try (Connection conexion = ConexionDB.getConnection();
              PreparedStatement ps = conexion.prepareStatement(sql)) {
 
             ps.setString(1, empleado.getNombre());
@@ -144,7 +145,7 @@ public class EmpleadoDAO implements EmpleadoRepository {
 
         String sql = "DELETE FROM empleados WHERE id = ?";
 
-        try (Connection conexion = Conexion_DB.getConnection();
+        try (Connection conexion = ConexionDB.getConnection();
              PreparedStatement ps = conexion.prepareStatement(sql)) {
 
             ps.setInt(1, id);
@@ -152,6 +153,10 @@ public class EmpleadoDAO implements EmpleadoRepository {
             return ps.executeUpdate() > 0;
 
         } catch (SQLException e) {
+            if (e.getErrorCode() == 1451) {
+                throw new RecursoEnUsoException(
+                        "No se puede eliminar el empleado porque tiene préstamos asociados.", e);
+            }
             throw new CrediYaException("No se pudo eliminar el empleado: " + e.getMessage(), e);
         }
     }

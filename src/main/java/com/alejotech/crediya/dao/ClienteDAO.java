@@ -1,7 +1,8 @@
 package com.alejotech.crediya.dao;
 
-import com.alejotech.crediya.Conexion.Conexion_DB;
+import com.alejotech.crediya.conexion.ConexionDB;
 import com.alejotech.crediya.excepciones.CrediYaException;
+import com.alejotech.crediya.excepciones.RecursoEnUsoException;
 import com.alejotech.crediya.modelo.Cliente;
 
 import java.sql.*;
@@ -19,7 +20,7 @@ public class ClienteDAO implements ClienteRepository {
                 VALUES (?, ?, ?, ?)
                 """;
 
-        try (Connection conexion = Conexion_DB.getConnection();
+        try (Connection conexion = ConexionDB.getConnection();
              PreparedStatement ps = conexion.prepareStatement(sql)) {
 
             ps.setString(1, cliente.getNombre());
@@ -43,7 +44,7 @@ public class ClienteDAO implements ClienteRepository {
 
         String sql = "SELECT * FROM clientes";
 
-        try (Connection conexion = Conexion_DB.getConnection();
+        try (Connection conexion = ConexionDB.getConnection();
              PreparedStatement ps = conexion.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
 
@@ -72,7 +73,7 @@ public class ClienteDAO implements ClienteRepository {
 
         String sql = "SELECT * FROM clientes WHERE id = ?";
 
-        try (Connection conexion = Conexion_DB.getConnection();
+        try (Connection conexion = ConexionDB.getConnection();
              PreparedStatement ps = conexion.prepareStatement(sql)) {
 
             ps.setInt(1, id);
@@ -109,7 +110,7 @@ public class ClienteDAO implements ClienteRepository {
                 WHERE id = ?
                 """;
 
-        try (Connection conexion = Conexion_DB.getConnection();
+        try (Connection conexion = ConexionDB.getConnection();
              PreparedStatement ps = conexion.prepareStatement(sql)) {
 
             ps.setString(1, cliente.getNombre());
@@ -130,7 +131,7 @@ public class ClienteDAO implements ClienteRepository {
 
         String sql = "DELETE FROM clientes WHERE id = ?";
 
-        try (Connection conexion = Conexion_DB.getConnection();
+        try (Connection conexion = ConexionDB.getConnection();
              PreparedStatement ps = conexion.prepareStatement(sql)) {
 
             ps.setInt(1, id);
@@ -138,6 +139,10 @@ public class ClienteDAO implements ClienteRepository {
             return ps.executeUpdate() > 0;
 
         } catch (SQLException e) {
+            if (e.getErrorCode() == 1451) {
+                throw new RecursoEnUsoException(
+                        "No se puede eliminar el cliente porque tiene préstamos asociados.", e);
+            }
             throw new CrediYaException("No se pudo eliminar el cliente: " + e.getMessage(), e);
         }
     }

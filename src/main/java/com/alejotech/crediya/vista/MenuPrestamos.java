@@ -1,6 +1,7 @@
 package com.alejotech.crediya.vista;
 
 import com.alejotech.crediya.excepciones.CrediYaException;
+import com.alejotech.crediya.excepciones.ValidacionException;
 import com.alejotech.crediya.modelo.Cliente;
 import com.alejotech.crediya.modelo.Empleado;
 import com.alejotech.crediya.modelo.EstadoPrestamo;
@@ -166,10 +167,10 @@ public class MenuPrestamos {
         try {
             nuevoEstado = EstadoPrestamo.desdeTexto(estado);
         } catch (IllegalArgumentException e) {
-            throw new CrediYaException(e.getMessage());
+            throw new ValidacionException(e.getMessage());
         }
 
-        prestamoService.cambiarEstado(id, nuevoEstado.name());
+        prestamoService.cambiarEstado(id, nuevoEstado);
 
         System.out.println("Estado actualizado.");
     }

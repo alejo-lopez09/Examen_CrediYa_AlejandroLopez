@@ -1,3 +1,2 @@
-1|Alejo|1115187651|Supervisor|alejitolopez199900109@gmail.com|2000000.02|qwa|wqe|qwe|qwe|123.0
-3|joasjda|12312|papa|12|12039
-4|si|sis|is|sis|1203
+1|Ana Torres|1001001001|Asesora|ana.torres@crediya.com|2500000.00
+2|Luis Rojas|1002002002|Coordinador|luis.rojas@crediya.com|3200000.00

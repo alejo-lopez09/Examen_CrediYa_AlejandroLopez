@@ -9,7 +9,7 @@ public enum EstadoPrestamo {
             return PENDIENTE;
         }
         try {
-            return valueOf(valor.trim().toUpperCase());
+            return valueOf(valor.trim().toUpperCase(java.util.Locale.ROOT));
         } catch (IllegalArgumentException e) {
             throw new IllegalArgumentException("Estado de préstamo inválido: " + valor);
         }

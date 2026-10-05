@@ -4,6 +4,8 @@ import com.alejotech.crediya.dao.ClienteDAO;
 import com.alejotech.crediya.dao.ClienteRepository;
 import com.alejotech.crediya.dao.PrestamoDAO;
 import com.alejotech.crediya.dao.PrestamoRepository;
+import com.alejotech.crediya.excepciones.RecursoNoEncontradoException;
+import com.alejotech.crediya.excepciones.ValidacionException;
 import com.alejotech.crediya.modelo.Cliente;
 import com.alejotech.crediya.modelo.Prestamo;
 import com.alejotech.crediya.util.ArchivoUtil;
@@ -12,108 +14,81 @@ import com.alejotech.crediya.util.Validaciones;
 import java.util.List;
 
 public class ClienteService {
-
     private static final String ARCHIVO = "clientes.txt";
-    private final ClienteRepository clienteDAO;
-    private final PrestamoRepository prestamoDAO;
+    private final ClienteRepository clienteRepository;
+    private final PrestamoRepository prestamoRepository;
 
     public ClienteService() {
         this(new ClienteDAO(), new PrestamoDAO());
     }
 
-    public ClienteService(ClienteRepository clienteDAO, PrestamoRepository prestamoDAO) {
-        this.clienteDAO = clienteDAO;
-        this.prestamoDAO = prestamoDAO;
+    public ClienteService(ClienteRepository clienteRepository, PrestamoRepository prestamoRepository) {
+        this.clienteRepository = clienteRepository;
+        this.prestamoRepository = prestamoRepository;
     }
 
-    // Registrar cliente
-    public boolean registrar(Cliente cliente) {
-
-        if (cliente == null) {
-            System.out.println("El cliente no puede ser null.");
-            return false;
-        }
-
-        if (!datosValidos(cliente)) {
-            return false;
-        }
-        if (!clienteDAO.guardar(cliente)) {
-            return false;
+    public void registrar(Cliente cliente) {
+        validar(cliente);
+        if (!clienteRepository.guardar(cliente)) {
+            throw new ValidacionException("No se pudo registrar el cliente.");
         }
         sincronizarRespaldo();
-        return true;
-    }
-
-    private boolean datosValidos(Cliente cliente) {
-        try {
-            Validaciones.requerido(cliente.getNombre(), "El nombre");
-            Validaciones.documento(cliente.getDocumento());
-            Validaciones.correo(cliente.getCorreo());
-            Validaciones.telefono(cliente.getTelefono());
-            return true;
-        } catch (IllegalArgumentException e) {
-            System.out.println(e.getMessage());
-            return false;
-        }
     }
 
     public void sincronizarRespaldo() {
-        ArchivoUtil.sincronizar(ARCHIVO, clienteDAO.listar().stream()
+        ArchivoUtil.sincronizar(ARCHIVO, clienteRepository.listar().stream()
                 .map(c -> ArchivoUtil.registro(c.getId(), c.getNombre(), c.getDocumento(),
                         c.getCorreo(), c.getTelefono()))
                 .toList());
     }
 
-    // Listar clientes
     public List<Cliente> listar() {
-        return clienteDAO.listar();
+        return clienteRepository.listar();
     }
 
-    // Buscar cliente
     public Cliente buscarPorId(int id) {
-
-        if (id <= 0) {
-            return null;
-        }
-
-        return clienteDAO.buscarPorId(id);
+        validarId(id);
+        return clienteRepository.buscarPorId(id);
     }
 
-    // Consultar préstamos de un cliente
     public List<Prestamo> consultarPrestamos(int clienteId) {
-
-        if (clienteId <= 0) {
-            return List.of();
+        validarId(clienteId);
+        if (clienteRepository.buscarPorId(clienteId) == null) {
+            throw new RecursoNoEncontradoException("El cliente no existe.");
         }
-
-        return prestamoDAO.buscarPorCliente(clienteId);
+        return prestamoRepository.buscarPorCliente(clienteId);
     }
 
-    // Actualizar cliente
-    public boolean actualizar(Cliente cliente) {
-
-        if (cliente == null || cliente.getId() <= 0 || !datosValidos(cliente)) {
-            return false;
-        }
-
-        if (!clienteDAO.actualizar(cliente)) {
-            return false;
+    public void actualizar(Cliente cliente) {
+        validar(cliente);
+        validarId(cliente.getId());
+        if (!clienteRepository.actualizar(cliente)) {
+            throw new RecursoNoEncontradoException("El cliente no existe o no se pudo actualizar.");
         }
         sincronizarRespaldo();
-        return true;
     }
 
-    // Eliminar cliente
-    public boolean eliminar(int id) {
+    public void eliminar(int id) {
+        validarId(id);
+        if (!clienteRepository.eliminar(id)) {
+            throw new RecursoNoEncontradoException("El cliente no existe.");
+        }
+        sincronizarRespaldo();
+    }
 
+    private void validar(Cliente cliente) {
+        if (cliente == null) {
+            throw new ValidacionException("El cliente es obligatorio.");
+        }
+        Validaciones.requerido(cliente.getNombre(), "El nombre");
+        Validaciones.documento(cliente.getDocumento());
+        Validaciones.correo(cliente.getCorreo());
+        Validaciones.telefono(cliente.getTelefono());
+    }
+
+    private void validarId(int id) {
         if (id <= 0) {
-            return false;
+            throw new ValidacionException("El ID del cliente debe ser positivo.");
         }
-
-        if (!clienteDAO.eliminar(id)) {
-            return false;
-        }
-        sincronizarRespaldo();
-        return true;
     }
 }

@@ -1,12 +1,14 @@
 package com.alejotech.crediya.dao;
 
-import com.alejotech.crediya.Conexion.Conexion_DB;
+import com.alejotech.crediya.conexion.ConexionDB;
 import com.alejotech.crediya.excepciones.CrediYaException;
+import com.alejotech.crediya.excepciones.PagoExcedeSaldoException;
+import com.alejotech.crediya.excepciones.RecursoNoEncontradoException;
+import com.alejotech.crediya.modelo.EstadoPrestamo;
 import com.alejotech.crediya.modelo.Pago;
 import com.alejotech.crediya.modelo.Prestamo;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.sql.Connection;
 import java.sql.Date;
 import java.sql.PreparedStatement;
@@ -14,6 +16,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 
 public class PagoDAO implements PagoRepository {
 
@@ -27,7 +31,7 @@ public class PagoDAO implements PagoRepository {
                 """;
         String estadoSql = "UPDATE prestamos SET estado = ? WHERE id = ?";
 
-        try (Connection conexion = Conexion_DB.getConnection()) {
+        try (Connection conexion = ConexionDB.getConnection()) {
             conexion.setTransactionIsolation(Connection.TRANSACTION_READ_COMMITTED);
             conexion.setAutoCommit(false);
             try {
@@ -36,13 +40,11 @@ public class PagoDAO implements PagoRepository {
                     ps.setInt(1, pago.getPrestamo().getId());
                     try (ResultSet rs = ps.executeQuery()) {
                         if (!rs.next()) {
-                            conexion.rollback();
-                            return false;
+                            throw new RecursoNoEncontradoException("El préstamo no existe.");
                         }
                         BigDecimal monto = rs.getBigDecimal("monto");
                         BigDecimal interes = rs.getBigDecimal("interes");
-                        totalPrestamo = monto.add(monto.multiply(interes)
-                                .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP));
+                        totalPrestamo = Prestamo.calcularMontoTotal(monto, interes);
                     }
                 }
 
@@ -57,8 +59,7 @@ public class PagoDAO implements PagoRepository {
 
                 BigDecimal saldoPendiente = totalPrestamo.subtract(totalPagado);
                 if (pago.getMonto().compareTo(saldoPendiente) > 0) {
-                    conexion.rollback();
-                    return false;
+                    throw new PagoExcedeSaldoException(saldoPendiente);
                 }
 
                 try (PreparedStatement ps = conexion.prepareStatement(insertSql)) {
@@ -70,7 +71,8 @@ public class PagoDAO implements PagoRepository {
 
                 BigDecimal nuevoSaldo = saldoPendiente.subtract(pago.getMonto());
                 try (PreparedStatement ps = conexion.prepareStatement(estadoSql)) {
-                    ps.setString(1, nuevoSaldo.signum() <= 0 ? "PAGADO" : "PENDIENTE");
+                    ps.setString(1, nuevoSaldo.signum() <= 0
+                            ? EstadoPrestamo.PAGADO.name() : EstadoPrestamo.PENDIENTE.name());
                     ps.setInt(2, pago.getPrestamo().getId());
                     ps.executeUpdate();
                 }
@@ -96,7 +98,7 @@ public class PagoDAO implements PagoRepository {
                 ORDER BY fecha_pago DESC, id DESC
                 """;
 
-        try (Connection conexion = Conexion_DB.getConnection();
+        try (Connection conexion = ConexionDB.getConnection();
              PreparedStatement ps = conexion.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
@@ -118,7 +120,7 @@ public class PagoDAO implements PagoRepository {
                 ORDER BY fecha_pago DESC, id DESC
                 """;
 
-        try (Connection conexion = Conexion_DB.getConnection();
+        try (Connection conexion = ConexionDB.getConnection();
              PreparedStatement ps = conexion.prepareStatement(sql)) {
             ps.setInt(1, prestamoId);
             try (ResultSet rs = ps.executeQuery()) {
@@ -136,7 +138,7 @@ public class PagoDAO implements PagoRepository {
     private Pago mapear(ResultSet rs) throws SQLException {
         Prestamo prestamo = new Prestamo(
                 rs.getInt("prestamo_id"), null, null, BigDecimal.ZERO,
-                BigDecimal.ZERO, 0, null, "PENDIENTE");
+                BigDecimal.ZERO, 0, null, EstadoPrestamo.PENDIENTE);
         return new Pago(rs.getInt("id"), prestamo,
                 rs.getDate("fecha_pago").toLocalDate(), rs.getBigDecimal("monto"));
     }
@@ -144,7 +146,7 @@ public class PagoDAO implements PagoRepository {
     @Override
     public BigDecimal totalPagado(int prestamoId) {
         String sql = "SELECT COALESCE(SUM(monto), 0) FROM pagos WHERE prestamo_id = ?";
-        try (Connection conexion = Conexion_DB.getConnection();
+        try (Connection conexion = ConexionDB.getConnection();
              PreparedStatement ps = conexion.prepareStatement(sql)) {
             ps.setInt(1, prestamoId);
             try (ResultSet rs = ps.executeQuery()) {
@@ -157,25 +159,46 @@ public class PagoDAO implements PagoRepository {
     }
 
     @Override
+    public Map<Integer, BigDecimal> totalesPagadosPorPrestamo() {
+        String sql = """
+                SELECT prestamo_id, COALESCE(SUM(monto), 0) AS total_pagado
+                FROM pagos
+                GROUP BY prestamo_id
+                """;
+        Map<Integer, BigDecimal> totales = new HashMap<>();
+        try (Connection conexion = ConexionDB.getConnection();
+             PreparedStatement ps = conexion.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                totales.put(rs.getInt("prestamo_id"), rs.getBigDecimal("total_pagado"));
+            }
+            return totales;
+        } catch (SQLException e) {
+            throw new CrediYaException("No se pudieron consultar los totales por préstamo: "
+                    + e.getMessage(), e);
+        }
+    }
+
+    @Override
     public BigDecimal calcularSaldoPendiente(int prestamoId) {
         String sql = """
-                SELECT ROUND(p.monto + (p.monto * p.interes / 100), 2)
-                       - COALESCE(SUM(pg.monto), 0)
+                SELECT p.monto, p.interes, COALESCE(SUM(pg.monto), 0) AS total_pagado
                 FROM prestamos p
                 LEFT JOIN pagos pg ON p.id = pg.prestamo_id
                 WHERE p.id = ?
                 GROUP BY p.id
                 """;
 
-        try (Connection conexion = Conexion_DB.getConnection();
+        try (Connection conexion = ConexionDB.getConnection();
              PreparedStatement ps = conexion.prepareStatement(sql)) {
             ps.setInt(1, prestamoId);
             try (ResultSet rs = ps.executeQuery()) {
                 if (!rs.next()) {
                     return BigDecimal.ZERO;
                 }
-                BigDecimal saldo = rs.getBigDecimal(1);
-                return saldo == null ? BigDecimal.ZERO : saldo.max(BigDecimal.ZERO);
+                BigDecimal total = Prestamo.calcularMontoTotal(
+                        rs.getBigDecimal("monto"), rs.getBigDecimal("interes"));
+                return total.subtract(rs.getBigDecimal("total_pagado")).max(BigDecimal.ZERO);
             }
         } catch (SQLException e) {
             throw new CrediYaException("No se pudo calcular el saldo pendiente: " + e.getMessage(), e);
@@ -191,7 +214,7 @@ public class PagoDAO implements PagoRepository {
         String prestamoSql = "SELECT monto, interes FROM prestamos WHERE id = ?";
         String estadoSql = "UPDATE prestamos SET estado = ? WHERE id = ?";
 
-        try (Connection conexion = Conexion_DB.getConnection()) {
+        try (Connection conexion = ConexionDB.getConnection()) {
             conexion.setTransactionIsolation(Connection.TRANSACTION_READ_COMMITTED);
             conexion.setAutoCommit(false);
             try {
@@ -232,8 +255,7 @@ public class PagoDAO implements PagoRepository {
                         rs.next();
                         BigDecimal monto = rs.getBigDecimal("monto");
                         BigDecimal interes = rs.getBigDecimal("interes");
-                        totalPrestamo = monto.add(monto.multiply(interes)
-                                .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP));
+                        totalPrestamo = Prestamo.calcularMontoTotal(monto, interes);
                     }
                 }
 
@@ -248,7 +270,7 @@ public class PagoDAO implements PagoRepository {
 
                 try (PreparedStatement ps = conexion.prepareStatement(estadoSql)) {
                     ps.setString(1, totalPagado.compareTo(totalPrestamo) >= 0
-                            ? "PAGADO" : "PENDIENTE");
+                            ? EstadoPrestamo.PAGADO.name() : EstadoPrestamo.PENDIENTE.name());
                     ps.setInt(2, prestamoId);
                     ps.executeUpdate();
                 }

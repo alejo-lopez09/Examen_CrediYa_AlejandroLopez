@@ -4,174 +4,110 @@ import com.alejotech.crediya.dao.PagoDAO;
 import com.alejotech.crediya.dao.PagoRepository;
 import com.alejotech.crediya.dao.PrestamoDAO;
 import com.alejotech.crediya.dao.PrestamoRepository;
+import com.alejotech.crediya.excepciones.PagoExcedeSaldoException;
+import com.alejotech.crediya.excepciones.RecursoNoEncontradoException;
+import com.alejotech.crediya.excepciones.ValidacionException;
 import com.alejotech.crediya.modelo.Pago;
 import com.alejotech.crediya.modelo.Prestamo;
 import com.alejotech.crediya.util.ArchivoUtil;
 import com.alejotech.crediya.util.Validaciones;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 public class PagoService {
-
     private static final String ARCHIVO = "pagos.txt";
-    private final PagoRepository pagoDAO;
-    private final PrestamoRepository prestamoDAO;
+    private final PagoRepository pagoRepository;
+    private final PrestamoRepository prestamoRepository;
 
     public PagoService() {
         this(new PagoDAO(), new PrestamoDAO());
     }
 
-    public PagoService(PagoRepository pagoDAO, PrestamoRepository prestamoDAO) {
-        this.pagoDAO = pagoDAO;
-        this.prestamoDAO = prestamoDAO;
+    public PagoService(PagoRepository pagoRepository, PrestamoRepository prestamoRepository) {
+        this.pagoRepository = pagoRepository;
+        this.prestamoRepository = prestamoRepository;
     }
 
-    // Registrar pago
-    public boolean registrar(Pago pago) {
-
-        if (pago == null) {
-            System.out.println("El pago no puede ser null.");
-            return false;
+    public void registrar(Pago pago) {
+        if (pago == null || pago.getPrestamo() == null || pago.getPrestamo().getId() <= 0) {
+            throw new ValidacionException("Debe especificar un pago y un préstamo válidos.");
         }
-
-        // Validar préstamo
-        if (pago.getPrestamo() == null ||
-                pago.getPrestamo().getId() <= 0) {
-
-            System.out.println(
-                    "Debe especificar un préstamo válido."
-            );
-
-            return false;
-        }
-
         int prestamoId = pago.getPrestamo().getId();
-
-        Prestamo prestamo = prestamoDAO.buscarPorId(prestamoId);
-
+        Prestamo prestamo = prestamoRepository.buscarPorId(prestamoId);
         if (prestamo == null) {
-
-            System.out.println(
-                    "El préstamo no existe."
-            );
-
-            return false;
+            throw new RecursoNoEncontradoException("El préstamo no existe.");
         }
-
-        // Validar fecha
         if (pago.getFechaPago() == null) {
-
-            System.out.println(
-                    "La fecha del pago es obligatoria."
-            );
-
-            return false;
+            throw new ValidacionException("La fecha del pago es obligatoria.");
         }
-        if (pago.getFechaPago().isAfter(java.time.LocalDate.now())) {
-            System.out.println("La fecha del pago no puede estar en el futuro.");
-            return false;
+        if (pago.getFechaPago().isAfter(LocalDate.now())) {
+            throw new ValidacionException("La fecha del pago no puede estar en el futuro.");
         }
-
-        // Validar monto
-        try {
-            Validaciones.positivo(pago.getMonto(), "El monto del pago");
-        } catch (IllegalArgumentException e) {
-            System.out.println(e.getMessage());
-            return false;
-        }
-
-        // Obtener saldo
-        BigDecimal saldoPendiente =
-                pagoDAO.calcularSaldoPendiente(prestamoId);
-
+        Validaciones.positivo(pago.getMonto(), "El monto del pago");
+        BigDecimal saldoPendiente = pagoRepository.calcularSaldoPendiente(prestamoId);
         if (saldoPendiente.signum() <= 0) {
-
-            System.out.println(
-                    "El préstamo ya está completamente pagado."
-            );
-
-            return false;
+            throw new ValidacionException("El préstamo ya está completamente pagado.");
         }
-
-        // Evitar pagar más de lo que se debe
         if (pago.getMonto().compareTo(saldoPendiente) > 0) {
-
-            System.out.println(
-                    "El pago supera el saldo pendiente."
-            );
-
-            System.out.println(
-                    "Saldo pendiente: $" + saldoPendiente
-            );
-
-            return false;
+            throw new PagoExcedeSaldoException(saldoPendiente);
         }
-
-        // Registrar pago
-        boolean registrado = pagoDAO.guardar(pago);
-
-        if (!registrado) {
-            return false;
+        if (!pagoRepository.guardar(pago)) {
+            throw new ValidacionException("No se pudo registrar el pago.");
         }
-
         sincronizarRespaldo();
-        return true;
     }
 
     public void sincronizarRespaldo() {
-        ArchivoUtil.sincronizar(ARCHIVO, pagoDAO.listar().stream()
+        ArchivoUtil.sincronizar(ARCHIVO, pagoRepository.listar().stream()
                 .map(p -> ArchivoUtil.registro(p.getId(), p.getPrestamo().getId(),
                         p.getFechaPago(), p.getMonto()))
                 .toList());
     }
 
-    // Listar todos los pagos
     public List<Pago> listar() {
-        return pagoDAO.listar();
+        return pagoRepository.listar();
     }
 
-    // Histórico de pagos de un préstamo
     public List<Pago> historial(int prestamoId) {
-
-        if (prestamoId <= 0) {
-            return List.of();
-        }
-
-        return pagoDAO.buscarPorPrestamo(prestamoId);
+        validarPrestamoExiste(prestamoId);
+        return pagoRepository.buscarPorPrestamo(prestamoId);
     }
 
-    // Total pagado
     public BigDecimal totalPagado(int prestamoId) {
-
-        if (prestamoId <= 0) {
-            return BigDecimal.ZERO;
-        }
-
-        return pagoDAO.totalPagado(prestamoId);
+        validarPrestamoExiste(prestamoId);
+        return pagoRepository.totalPagado(prestamoId);
     }
 
-    // Saldo pendiente
+    public Map<Integer, BigDecimal> totalesPagadosPorPrestamo() {
+        return pagoRepository.totalesPagadosPorPrestamo();
+    }
+
     public BigDecimal saldoPendiente(int prestamoId) {
-
-        if (prestamoId <= 0) {
-            return BigDecimal.ZERO;
-        }
-
-        return pagoDAO.calcularSaldoPendiente(prestamoId);
+        validarPrestamoExiste(prestamoId);
+        return pagoRepository.calcularSaldoPendiente(prestamoId);
     }
 
-    // Eliminar pago
-    public boolean eliminar(int id) {
-
-        if (id <= 0) {
-            return false;
-        }
-
-        if (!pagoDAO.eliminar(id)) {
-            return false;
+    public void eliminar(int id) {
+        validarId(id, "pago");
+        if (!pagoRepository.eliminar(id)) {
+            throw new RecursoNoEncontradoException("El pago no existe.");
         }
         sincronizarRespaldo();
-        return true;
+    }
+
+    private void validarId(int id, String recurso) {
+        if (id <= 0) {
+            throw new ValidacionException("El ID del " + recurso + " debe ser positivo.");
+        }
+    }
+
+    private void validarPrestamoExiste(int prestamoId) {
+        validarId(prestamoId, "préstamo");
+        if (prestamoRepository.buscarPorId(prestamoId) == null) {
+            throw new RecursoNoEncontradoException("El préstamo no existe.");
+        }
     }
 }

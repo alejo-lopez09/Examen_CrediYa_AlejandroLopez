@@ -3,6 +3,7 @@ package com.alejotech.crediya.util;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import com.alejotech.crediya.excepciones.ValidacionException;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -19,13 +20,13 @@ class ValidacionesTest {
 
     @Test
     void rechazaDatosInvalidosYMasDeDosDecimales() {
-        assertThrows(IllegalArgumentException.class,
+        assertThrows(ValidacionException.class,
                 () -> Validaciones.documento("doc-123"));
-        assertThrows(IllegalArgumentException.class,
+        assertThrows(ValidacionException.class,
                 () -> Validaciones.correo("no-es-correo"));
-        assertThrows(IllegalArgumentException.class,
+        assertThrows(ValidacionException.class,
                 () -> Validaciones.telefono("123"));
-        assertThrows(IllegalArgumentException.class,
+        assertThrows(ValidacionException.class,
                 () -> Validaciones.positivo(new BigDecimal("1.001"), "Monto"));
     }
 }

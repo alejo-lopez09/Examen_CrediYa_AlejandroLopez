@@ -1,13 +1,13 @@
 package com.alejotech.crediya.dao;
 
-import com.alejotech.crediya.Conexion.Conexion_DB;
+import com.alejotech.crediya.conexion.ConexionDB;
 import com.alejotech.crediya.excepciones.CrediYaException;
 import com.alejotech.crediya.modelo.Cliente;
 import com.alejotech.crediya.modelo.Empleado;
 import com.alejotech.crediya.modelo.Prestamo;
+import com.alejotech.crediya.modelo.EstadoPrestamo;
 
 import java.sql.*;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -23,7 +23,7 @@ public class PrestamoDAO implements PrestamoRepository {
                 VALUES (?, ?, ?, ?, ?, ?, ?)
                 """;
 
-        try (Connection conexion = Conexion_DB.getConnection();
+        try (Connection conexion = ConexionDB.getConnection();
              PreparedStatement ps = conexion.prepareStatement(sql)) {
 
             ps.setInt(1, prestamo.getCliente().getId());
@@ -37,7 +37,7 @@ public class PrestamoDAO implements PrestamoRepository {
                     Date.valueOf(prestamo.getFechaInicio())
             );
 
-            ps.setString(7, prestamo.getEstado());
+            ps.setString(7, prestamo.getEstado().name());
 
             ps.executeUpdate();
 
@@ -77,7 +77,7 @@ public class PrestamoDAO implements PrestamoRepository {
                     ON p.empleado_id = e.id
                 """;
 
-        try (Connection conexion = Conexion_DB.getConnection();
+        try (Connection conexion = ConexionDB.getConnection();
              PreparedStatement ps = conexion.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
 
@@ -108,7 +108,7 @@ public class PrestamoDAO implements PrestamoRepository {
                         rs.getBigDecimal("interes"),
                         rs.getInt("cuotas"),
                         rs.getDate("fecha_inicio").toLocalDate(),
-                        rs.getString("estado")
+                        EstadoPrestamo.desdeTexto(rs.getString("estado"))
                 );
 
                 prestamos.add(prestamo);
@@ -150,7 +150,7 @@ public class PrestamoDAO implements PrestamoRepository {
                 WHERE p.id = ?
                 """;
 
-        try (Connection conexion = Conexion_DB.getConnection();
+        try (Connection conexion = ConexionDB.getConnection();
              PreparedStatement ps = conexion.prepareStatement(sql)) {
 
             ps.setInt(1, id);
@@ -184,7 +184,7 @@ public class PrestamoDAO implements PrestamoRepository {
                         rs.getBigDecimal("interes"),
                         rs.getInt("cuotas"),
                         rs.getDate("fecha_inicio").toLocalDate(),
-                        rs.getString("estado")
+                        EstadoPrestamo.desdeTexto(rs.getString("estado"))
                 );
             }
 
@@ -196,7 +196,7 @@ public class PrestamoDAO implements PrestamoRepository {
     }
 
 
-    public boolean cambiarEstado(int id, String estado) {
+    public boolean cambiarEstado(int id, EstadoPrestamo estado) {
 
         String sql = """
                 UPDATE prestamos
@@ -204,10 +204,10 @@ public class PrestamoDAO implements PrestamoRepository {
                 WHERE id = ?
                 """;
 
-        try (Connection conexion = Conexion_DB.getConnection();
+        try (Connection conexion = ConexionDB.getConnection();
              PreparedStatement ps = conexion.prepareStatement(sql)) {
 
-            ps.setString(1, estado);
+            ps.setString(1, estado.name());
             ps.setInt(2, id);
 
             return ps.executeUpdate() > 0;
@@ -222,7 +222,7 @@ public class PrestamoDAO implements PrestamoRepository {
 
         String sql = "DELETE FROM prestamos WHERE id = ?";
 
-        try (Connection conexion = Conexion_DB.getConnection();
+        try (Connection conexion = ConexionDB.getConnection();
              PreparedStatement ps = conexion.prepareStatement(sql)) {
 
             ps.setInt(1, id);
@@ -265,7 +265,7 @@ public class PrestamoDAO implements PrestamoRepository {
                 WHERE p.cliente_id = ?
                 """;
 
-        try (Connection conexion = Conexion_DB.getConnection();
+        try (Connection conexion = ConexionDB.getConnection();
              PreparedStatement ps = conexion.prepareStatement(sql)) {
 
             ps.setInt(1, clienteId);
@@ -299,7 +299,7 @@ public class PrestamoDAO implements PrestamoRepository {
                         rs.getBigDecimal("interes"),
                         rs.getInt("cuotas"),
                         rs.getDate("fecha_inicio").toLocalDate(),
-                        rs.getString("estado")
+                        EstadoPrestamo.desdeTexto(rs.getString("estado"))
                 );
 
                 prestamos.add(prestamo);

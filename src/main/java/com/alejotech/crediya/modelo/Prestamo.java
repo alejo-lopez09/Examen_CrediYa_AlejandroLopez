@@ -13,12 +13,12 @@ public class Prestamo {
     private BigDecimal interes;
     private int cuotas;
     private LocalDate fechaInicio;
-    private String estado;
+    private EstadoPrestamo estado;
 
 
     public Prestamo(int id, Cliente cliente, Empleado empleado,
                     BigDecimal monto, BigDecimal interes, int cuotas,
-                    LocalDate fechaInicio, String estado) {
+                    LocalDate fechaInicio, EstadoPrestamo estado) {
 
         this.id = id;
         this.cliente = cliente;
@@ -32,7 +32,7 @@ public class Prestamo {
 
     public Prestamo(Cliente cliente, Empleado empleado,
                     BigDecimal monto, BigDecimal interes, int cuotas,
-                    LocalDate fechaInicio, String estado) {
+                    LocalDate fechaInicio, EstadoPrestamo estado) {
 
         this.cliente = cliente;
         this.empleado = empleado;
@@ -44,6 +44,10 @@ public class Prestamo {
     }
 
     public BigDecimal calcularMontoTotal() {
+        return calcularMontoTotal(monto, interes);
+    }
+
+    public static BigDecimal calcularMontoTotal(BigDecimal monto, BigDecimal interes) {
         return monto.add(monto.multiply(interes)
                 .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP));
     }
@@ -58,11 +62,23 @@ public class Prestamo {
                 BigDecimal.valueOf(cuotas), 2, RoundingMode.HALF_UP);
     }
 
-    public boolean estaVencido() {
-        return "PENDIENTE".equalsIgnoreCase(estado)
-                && fechaInicio != null
-                && cuotas > 0
-                && fechaInicio.plusMonths(cuotas).isBefore(LocalDate.now());
+    public boolean estaVencido(BigDecimal totalPagado, LocalDate fechaConsulta) {
+        if (estado != EstadoPrestamo.PENDIENTE || fechaInicio == null || cuotas <= 0
+                || totalPagado == null || fechaConsulta == null || !fechaConsulta.isAfter(fechaInicio)) {
+            return false;
+        }
+        int cuotasEsperadas = 0;
+        while (cuotasEsperadas < cuotas
+                && !fechaInicio.plusMonths(cuotasEsperadas + 1L).isAfter(fechaConsulta)) {
+            cuotasEsperadas++;
+        }
+        if (cuotasEsperadas == 0) {
+            return false;
+        }
+        BigDecimal saldoEsperado = calcularCuotaMensual()
+                .multiply(BigDecimal.valueOf(cuotasEsperadas))
+                .min(calcularMontoTotal());
+        return totalPagado.compareTo(saldoEsperado) < 0;
     }
 
     public int getId() {
@@ -121,11 +137,11 @@ public class Prestamo {
         this.fechaInicio = fechaInicio;
     }
 
-    public String getEstado() {
+    public EstadoPrestamo getEstado() {
         return estado;
     }
 
-    public void setEstado(String estado) {
+    public void setEstado(EstadoPrestamo estado) {
         this.estado = estado;
     }
 
@@ -139,7 +155,7 @@ public class Prestamo {
                 ", interes=" + interes +
                 ", cuotas=" + cuotas +
                 ", fechaInicio=" + fechaInicio +
-                ", estado='" + estado + '\'' +
+                ", estado=" + estado +
                 '}';
     }
 

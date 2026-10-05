@@ -54,3 +54,34 @@ CREATE TABLE IF NOT EXISTS pagos (
   CONSTRAINT fk_pagos_prestamo
     FOREIGN KEY (prestamo_id) REFERENCES prestamos (id)
 );
+
+INSERT INTO empleados (id, nombre, documento, rol, correo, salario) VALUES
+  (1, 'Ana Torres', '1001001001', 'Asesora', 'ana.torres@crediya.com', 2500000.00),
+  (2, 'Luis Rojas', '1002002002', 'Coordinador', 'luis.rojas@crediya.com', 3200000.00)
+ON DUPLICATE KEY UPDATE nombre = VALUES(nombre), rol = VALUES(rol),
+  correo = VALUES(correo), salario = VALUES(salario);
+
+INSERT INTO clientes (id, nombre, documento, correo, telefono) VALUES
+  (1, 'Laura Gómez', '2001001001', 'laura.gomez@example.com', '3001234567'),
+  (2, 'David Pérez', '2002002002', 'david.perez@example.com', '3107654321')
+ON DUPLICATE KEY UPDATE nombre = VALUES(nombre), correo = VALUES(correo),
+  telefono = VALUES(telefono);
+
+INSERT INTO prestamos
+  (id, cliente_id, empleado_id, monto, interes, cuotas, fecha_inicio, estado) VALUES
+  (1, 1, 1, 1000000.00, 10.00, 6, '2026-08-05', 'PENDIENTE'),
+  (2, 2, 2, 500000.00, 5.00, 5, '2026-08-01', 'PENDIENTE'),
+  (3, 2, 1, 300000.00, 0.00, 3, '2026-04-01', 'PAGADO')
+ON DUPLICATE KEY UPDATE cliente_id = VALUES(cliente_id), empleado_id = VALUES(empleado_id),
+  monto = VALUES(monto), interes = VALUES(interes), cuotas = VALUES(cuotas),
+  fecha_inicio = VALUES(fecha_inicio), estado = VALUES(estado);
+
+INSERT INTO pagos (id, prestamo_id, fecha_pago, monto) VALUES
+  (1, 1, '2026-09-05', 150000.00),
+  (2, 2, '2026-09-01', 105000.00),
+  (3, 2, '2026-10-01', 105000.00),
+  (4, 3, '2026-05-01', 100000.00),
+  (5, 3, '2026-06-01', 100000.00),
+  (6, 3, '2026-07-01', 100000.00)
+ON DUPLICATE KEY UPDATE prestamo_id = VALUES(prestamo_id), fecha_pago = VALUES(fecha_pago),
+  monto = VALUES(monto);

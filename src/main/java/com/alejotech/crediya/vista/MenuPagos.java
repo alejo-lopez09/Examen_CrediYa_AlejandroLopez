@@ -105,11 +105,8 @@ public class MenuPagos {
         }
 
         Pago pago = new Pago(prestamo, LocalDate.now(), monto);
-        if (pagoService.registrar(pago)) {
-            System.out.println("Pago registrado correctamente.");
-        } else {
-            System.out.println("No se pudo registrar el pago.");
-        }
+        pagoService.registrar(pago);
+        System.out.println("Pago registrado correctamente.");
     }
 
     private void listar() throws CrediYaException {
