@@ -38,7 +38,7 @@ No guardes contraseñas reales en el código ni en archivos versionados. `CREATE
 Desde la raíz del proyecto:
 
 ```sh
-mvn clean test
+mvn clean verify
 mvn exec:java -Dexec.mainClass=com.alejotech.crediya.Main
 ```
 
@@ -107,12 +107,73 @@ Las interfaces `*Repository` declaran los contratos de persistencia y las clases
 
 El archivo fuente editable es [`docs/UML_CrediYa.puml`](docs/UML_CrediYa.puml).
 
-## Pruebas
+## Estructura del proyecto
 
-Ejecutar:
-
-```sh
-mvn test
+```text
+Proyecto_Java/
+|-- data/                              Respaldos de texto consultables
+|-- docs/
+|   |-- CrediYa_Arquitectura.drawio    Diagrama editable de flujo y tablas
+|   |-- UML_CrediYa.puml               Fuente del diagrama de clases
+|   `-- UML_CrediYa.png                UML exportado para visualizar
+|-- sql/
+|   `-- crediya_db.sql                 Esquema MySQL y datos de demostración
+|-- src/
+|   |-- main/java/com/alejotech/crediya/
+|   |   |-- conexion/                  Configuración y apertura JDBC
+|   |   |-- dao/                       Contratos Repository y adaptadores DAO
+|   |   |-- excepciones/               Excepciones de negocio tipadas
+|   |   |-- modelo/                    Entidades, enum y reglas de dominio
+|   |   |-- service/                   Validaciones y casos de uso
+|   |   |-- util/                      Archivos, entrada y validaciones comunes
+|   |   |-- vista/                     Menús de consola por módulo
+|   |   `-- Main.java                  Punto de entrada de la aplicación
+|   `-- test/java/                     Pruebas unitarias y de consola
+|-- .gitignore
+|-- pom.xml                            Java 17, MySQL Connector/J y JUnit 5
+`-- README.md
 ```
 
-Las pruebas automatizadas cubren el cálculo del préstamo, detección de mora, validaciones y reglas de servicio como el rechazo de un pago superior al saldo. Los tests unitarios de servicios usan repositorios sustitutos; las transacciones JDBC deben verificarse además con MySQL.
+### Cómo funciona
+
+1. `Main` crea los servicios y la vista principal.
+2. La vista solicita datos al usuario y delega cada acción al servicio correspondiente.
+3. Los servicios aplican validaciones y reglas del dominio; los errores se expresan con excepciones y la vista muestra el mensaje.
+4. Los servicios usan interfaces `*Repository`; las implementaciones `*DAO` ejecutan SQL con JDBC y `PreparedStatement`.
+5. Al registrar o modificar datos, primero se confirma la operación en MySQL. Después el servicio vuelve a escribir el archivo de respaldo correspondiente mediante una sustitución atómica.
+6. La opción “Consultar respaldos en archivos” lee los `.txt` mediante `ArchivoUtil`; los archivos no se importan ni se usan para restaurar la base.
+7. Los reportes usan streams para filtrar y agrupar; los totales de pagos por préstamo se consultan en bloque para calcular mora sin una consulta SQL por préstamo.
+
+### Diagrama editable en draw.io
+
+El archivo [`docs/CrediYa_Arquitectura.drawio`](docs/CrediYa_Arquitectura.drawio) se puede abrir y editar en [diagrams.net (draw.io)](https://app.diagrams.net/) con **File > Open From > Device**. Incluye el recorrido consola → vista → servicio → repositorio/DAO → MySQL, el uso de los respaldos de texto y el modelo entidad-relación de la base.
+
+| Tabla | Atributos | Claves y relaciones |
+|---|---|---|
+| `empleados` | `id`, `nombre`, `documento`, `rol`, `correo`, `salario` | `id` es PK; `documento` es único. Un empleado puede gestionar cero o muchos préstamos. |
+| `clientes` | `id`, `nombre`, `documento`, `correo`, `telefono` | `id` es PK; `documento` es único. Un cliente puede tener cero o muchos préstamos. |
+| `prestamos` | `id`, `cliente_id`, `empleado_id`, `monto`, `interes`, `cuotas`, `fecha_inicio`, `estado` | `id` es PK; `cliente_id` y `empleado_id` son FK. Cada préstamo pertenece a un cliente y a un empleado; puede tener cero o muchos pagos. |
+| `pagos` | `id`, `prestamo_id`, `fecha_pago`, `monto` | `id` es PK; `prestamo_id` es FK. Cada pago pertenece a un préstamo. |
+
+Las relaciones del esquema son `clientes 1:N prestamos`, `empleados 1:N prestamos` y `prestamos 1:N pagos`; las claves foráneas impiden borrar registros padre mientras tengan registros dependientes.
+
+## Pruebas
+
+Verificación automatizada ejecutada en el proyecto:
+
+```sh
+mvn clean verify
+```
+
+Resultado de la última ejecución: **14 pruebas, 0 fallos y 0 errores**. Maven compiló las 35 clases de producción y las 6 clases de prueba con `--release 17`, ejecutó Surefire y completó `verify`.
+
+| Suite | Casos | Qué comprueba |
+|---|---:|---|
+| `PrestamoTest` | 3 | Interés simple, redondeo, cuota mensual y mora según cuotas esperadas. |
+| `PagoServiceTest` | 2 | Rechazo de un abono superior al saldo y de pagos con fecha futura; confirma que no se persiste el pago inválido. |
+| `PrestamoServiceTest` | 3 | Rechazo de estado pagado si hay saldo, rechazo de préstamo sin cliente e inicio obligatorio en estado pendiente. |
+| `ArchivoUtilTest` | 2 | Escritura/lectura del respaldo, escape de separadores y rechazo de rutas fuera de `data/`. |
+| `ValidacionesTest` | 3 | Formatos de correo/documento/teléfono, montos, límites de longitud y precisión. |
+| `MenuPrincipalTest` | 1 | Construcción del menú y salida limpia sin abrir una conexión JDBC. |
+
+Las pruebas de servicios usan repositorios sustitutos; por tanto, **no simulan ni sustituyen una prueba de integración con MySQL**. Para comprobar JDBC en el equipo de entrega, configura las variables de entorno de la sección MySQL, ejecuta `mvn exec:java -Dexec.mainClass=com.alejotech.crediya.Main` y verifica el listado de empleados/clientes, creación de un préstamo, registro de un pago, saldo e historial. También revisa `data/` después de una escritura exitosa. No se incluye una prueba automatizada que modifique una base real para evitar alterar datos del usuario.

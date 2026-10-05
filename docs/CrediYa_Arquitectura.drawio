@@ -1,0 +1,91 @@
+<mxfile host="app.diagrams.net" modified="2026-10-05T16:20:00.000Z" agent="CrediYa" version="24.7.17" type="device">
+  <diagram id="crediya-arquitectura" name="Arquitectura y datos">
+    <mxGraphModel dx="1680" dy="1050" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1680" pageHeight="1050" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="title" value="CREDIYA - FLUJO DE LA APLICACION Y MODELO RELACIONAL" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;fontSize=22;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="300" y="20" width="1000" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="main" value="Main&lt;br&gt;crea servicios y abre MenuPrincipal" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="40" y="110" width="210" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="view" value="Vista / consola&lt;br&gt;MenuPrincipal y menus por modulo&lt;br&gt;captura entradas y muestra resultados" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="310" y="100" width="290" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="service" value="Servicios&lt;br&gt;validan datos y aplican reglas de negocio" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="670" y="100" width="250" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="repo" value="Contratos Repository&lt;br&gt;abstraen el acceso a datos" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="990" y="100" width="230" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="dao" value="DAO JDBC&lt;br&gt;PreparedStatement, consultas y transacciones" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="1290" y="100" width="250" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="db" value="MySQL&lt;br&gt;fuente principal y persistencia relacional" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#f8cecc;strokeColor=#b85450;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="1390" y="250" width="180" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="files" value="data/*.txt&lt;br&gt;respaldos consultables de empleados, clientes, prestamos y pagos" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="880" y="250" width="270" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="archive" value="ArchivoUtil&lt;br&gt;escribe respaldos despues de guardar en MySQL&lt;br&gt;y los lee desde MenuRespaldos" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="480" y="255" width="300" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="reports" value="MenuReportes&lt;br&gt;Streams y groupingBy para filtros y agregados" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="70" y="255" width="300" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="flow1" value="inicia" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;" edge="1" parent="1" source="main" target="view">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="flow2" value="solicita operaciones" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;" edge="1" parent="1" source="view" target="service">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="flow3" value="usa contratos" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;" edge="1" parent="1" source="service" target="repo">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="flow4" value="implementa" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;" edge="1" parent="1" source="repo" target="dao">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="flow5" value="SQL por JDBC" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;" edge="1" parent="1" source="dao" target="db">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="flow6" value="actualiza respaldo" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;" edge="1" parent="1" source="service" target="archive">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="flow7" value="archivos de texto" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;" edge="1" parent="1" source="archive" target="files">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="flow8" value="lectura de respaldos" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;" edge="1" parent="1" source="view" target="archive">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="flow9" value="consulta listas" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;" edge="1" parent="1" source="service" target="reports">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="dbtitle" value="MODELO DE DATOS MYSQL - crediya_db" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;fontSize=20;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="470" y="410" width="740" height="35" as="geometry"/>
+        </mxCell>
+        <mxCell id="employees" value="&lt;b&gt;empleados&lt;/b&gt;&lt;hr&gt;&lt;b&gt;PK&lt;/b&gt; id INT AUTO_INCREMENT&lt;br&gt;nombre VARCHAR(80) NOT NULL&lt;br&gt;documento VARCHAR(30) UNIQUE NOT NULL&lt;br&gt;rol VARCHAR(30) NOT NULL&lt;br&gt;correo VARCHAR(80) NOT NULL&lt;br&gt;salario DECIMAL(10,2) NOT NULL" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=8;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="80" y="500" width="330" height="210" as="geometry"/>
+        </mxCell>
+        <mxCell id="clients" value="&lt;b&gt;clientes&lt;/b&gt;&lt;hr&gt;&lt;b&gt;PK&lt;/b&gt; id INT AUTO_INCREMENT&lt;br&gt;nombre VARCHAR(80) NOT NULL&lt;br&gt;documento VARCHAR(30) UNIQUE NOT NULL&lt;br&gt;correo VARCHAR(80) NOT NULL&lt;br&gt;telefono VARCHAR(20) NOT NULL" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=8;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="80" y="760" width="330" height="190" as="geometry"/>
+        </mxCell>
+        <mxCell id="loans" value="&lt;b&gt;prestamos&lt;/b&gt;&lt;hr&gt;&lt;b&gt;PK&lt;/b&gt; id INT AUTO_INCREMENT&lt;br&gt;&lt;b&gt;FK&lt;/b&gt; cliente_id -&gt; clientes.id&lt;br&gt;&lt;b&gt;FK&lt;/b&gt; empleado_id -&gt; empleados.id&lt;br&gt;monto DECIMAL(12,2)&lt;br&gt;interes DECIMAL(5,2)&lt;br&gt;cuotas INT&lt;br&gt;fecha_inicio DATE&lt;br&gt;estado VARCHAR(20)" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=8;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="600" y="570" width="390" height="260" as="geometry"/>
+        </mxCell>
+        <mxCell id="payments" value="&lt;b&gt;pagos&lt;/b&gt;&lt;hr&gt;&lt;b&gt;PK&lt;/b&gt; id INT AUTO_INCREMENT&lt;br&gt;&lt;b&gt;FK&lt;/b&gt; prestamo_id -&gt; prestamos.id&lt;br&gt;fecha_pago DATE NOT NULL&lt;br&gt;monto DECIMAL(10,2) NOT NULL" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=8;fillColor=#f8cecc;strokeColor=#b85450;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="1190" y="610" width="350" height="170" as="geometry"/>
+        </mxCell>
+        <mxCell id="fkclient" value="1 cliente tiene 0..N prestamos" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=ERone;" edge="1" parent="1" source="clients" target="loans">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="fkemployee" value="1 empleado gestiona 0..N prestamos" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=ERone;" edge="1" parent="1" source="employees" target="loans">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="fkloan" value="1 prestamo tiene 0..N pagos" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=ERone;" edge="1" parent="1" source="loans" target="payments">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
