@@ -47,6 +47,7 @@ public class PagoService {
             throw new ValidacionException("La fecha del pago no puede estar en el futuro.");
         }
         Validaciones.positivo(pago.getMonto(), "El monto del pago");
+        Validaciones.maximoDigitosEnteros(pago.getMonto(), 8, "El monto del pago");
         BigDecimal saldoPendiente = pagoRepository.calcularSaldoPendiente(prestamoId);
         if (saldoPendiente.signum() <= 0) {
             throw new ValidacionException("El préstamo ya está completamente pagado.");

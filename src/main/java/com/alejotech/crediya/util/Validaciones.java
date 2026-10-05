@@ -21,6 +21,16 @@ public final class Validaciones {
         }
     }
 
+    public static String texto(String valor, String campo, int longitudMaxima) {
+        requerido(valor, campo);
+        String normalizado = valor.trim();
+        if (normalizado.length() > longitudMaxima) {
+            throw new ValidacionException(campo + " no puede superar "
+                    + longitudMaxima + " caracteres.");
+        }
+        return normalizado;
+    }
+
     public static void documento(String valor) {
         requerido(valor, "El documento");
         if (!DOCUMENTO.matcher(valor.trim()).matches()) {
@@ -49,6 +59,12 @@ public final class Validaciones {
             throw new ValidacionException(campo + " debe ser mayor que cero.");
         }
         maximoDosDecimales(valor, campo);
+    }
+
+    public static void maximoDigitosEnteros(BigDecimal valor, int digitos, String campo) {
+        if (valor != null && valor.precision() - valor.scale() > digitos) {
+            throw new ValidacionException(campo + " supera el máximo permitido.");
+        }
     }
 
     public static void noNegativo(BigDecimal valor, String campo) {

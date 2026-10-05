@@ -2,6 +2,7 @@ package com.alejotech.crediya.dao;
 
 import com.alejotech.crediya.conexion.ConexionDB;
 import com.alejotech.crediya.excepciones.CrediYaException;
+import com.alejotech.crediya.excepciones.RecursoEnUsoException;
 import com.alejotech.crediya.modelo.Cliente;
 import com.alejotech.crediya.modelo.Empleado;
 import com.alejotech.crediya.modelo.Prestamo;
@@ -230,6 +231,10 @@ public class PrestamoDAO implements PrestamoRepository {
             return ps.executeUpdate() > 0;
 
         } catch (SQLException e) {
+            if (e.getErrorCode() == 1451) {
+                throw new RecursoEnUsoException(
+                        "No se puede eliminar el préstamo porque tiene pagos asociados.", e);
+            }
             throw new CrediYaException("No se pudo eliminar el préstamo: " + e.getMessage(), e);
         }
     }

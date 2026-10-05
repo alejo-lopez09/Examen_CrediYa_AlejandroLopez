@@ -3,6 +3,7 @@ package com.alejotech.crediya.service;
 import com.alejotech.crediya.dao.PagoRepository;
 import com.alejotech.crediya.dao.PrestamoRepository;
 import com.alejotech.crediya.excepciones.PagoExcedeSaldoException;
+import com.alejotech.crediya.excepciones.ValidacionException;
 import com.alejotech.crediya.modelo.EstadoPrestamo;
 import com.alejotech.crediya.modelo.Pago;
 import com.alejotech.crediya.modelo.Prestamo;
@@ -29,6 +30,18 @@ class PagoServiceTest {
                         new BigDecimal("150.00"))));
 
         assertEquals(new BigDecimal("100.00"), error.getSaldoPendiente());
+        assertFalse(pagos.guardado);
+    }
+
+    @Test
+    void rechazaFechaDePagoFuturaAntesDeConsultarSaldo() {
+        Prestamo prestamo = new Prestamo(1, null, null, BigDecimal.TEN,
+                BigDecimal.ZERO, 1, LocalDate.now(), EstadoPrestamo.PENDIENTE);
+        FakePagoRepository pagos = new FakePagoRepository();
+        PagoService service = new PagoService(pagos, new FakePrestamoRepository(prestamo));
+
+        assertThrows(ValidacionException.class,
+                () -> service.registrar(new Pago(prestamo, LocalDate.now().plusDays(1), BigDecimal.ONE)));
         assertFalse(pagos.guardado);
     }
 

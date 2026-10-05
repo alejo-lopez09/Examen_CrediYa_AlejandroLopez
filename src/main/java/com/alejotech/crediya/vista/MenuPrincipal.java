@@ -16,6 +16,7 @@ public class MenuPrincipal {
     private final MenuPrestamos menuPrestamos;
     private final MenuPagos menuPagos;
     private final MenuReportes menuReportes;
+    private final MenuRespaldos menuRespaldos;
 
     public MenuPrincipal(
             Scanner scanner,
@@ -46,6 +47,7 @@ public class MenuPrincipal {
                         prestamoService,
                         pagoService
                 );
+        this.menuRespaldos = new MenuRespaldos(scanner);
     }
 
     public void mostrar() {
@@ -61,7 +63,8 @@ public class MenuPrincipal {
             System.out.println("3. Gestión de préstamos");
             System.out.println("4. Gestión de pagos");
             System.out.println("5. Reportes");
-            System.out.println("6. Salir");
+            System.out.println("6. Consultar respaldos en archivos");
+            System.out.println("7. Salir");
             System.out.println("=================================");
 
             opcion = leerEntero("Seleccione una opción: ");
@@ -89,6 +92,10 @@ public class MenuPrincipal {
                     break;
 
                 case 6:
+                    menuRespaldos.mostrar();
+                    break;
+
+                case 7:
                     System.out.println("Gracias por utilizar CrediYa.");
                     break;
 
@@ -96,7 +103,7 @@ public class MenuPrincipal {
                     System.out.println("Opción inválida.");
             }
 
-        } while (opcion != 6);
+        } while (opcion != 7);
     }
 
     private int leerEntero(String mensaje) {

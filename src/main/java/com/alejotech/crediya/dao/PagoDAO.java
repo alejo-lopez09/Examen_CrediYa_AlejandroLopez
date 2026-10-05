@@ -223,8 +223,7 @@ public class PagoDAO implements PagoRepository {
                     ps.setInt(1, id);
                     try (ResultSet rs = ps.executeQuery()) {
                         if (!rs.next()) {
-                            conexion.rollback();
-                            return false;
+                            throw new RecursoNoEncontradoException("El pago no existe.");
                         }
                         prestamoId = rs.getInt(1);
                     }
@@ -234,8 +233,7 @@ public class PagoDAO implements PagoRepository {
                     ps.setInt(1, prestamoId);
                     try (ResultSet rs = ps.executeQuery()) {
                         if (!rs.next()) {
-                            conexion.rollback();
-                            return false;
+                            throw new RecursoNoEncontradoException("El préstamo asociado al pago no existe.");
                         }
                     }
                 }
@@ -243,8 +241,7 @@ public class PagoDAO implements PagoRepository {
                 try (PreparedStatement ps = conexion.prepareStatement(deleteSql)) {
                     ps.setInt(1, id);
                     if (ps.executeUpdate() == 0) {
-                        conexion.rollback();
-                        return false;
+                        throw new RecursoNoEncontradoException("El pago ya no existe.");
                     }
                 }
 

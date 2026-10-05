@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class PrestamoServiceTest {
     @Test
@@ -33,6 +34,38 @@ class PrestamoServiceTest {
                 () -> service.cambiarEstado(1, EstadoPrestamo.PAGADO));
     }
 
+    @Test
+    void rechazaPrestamoSinClienteAntesDePersistir() {
+        FakePrestamoRepository prestamos = new FakePrestamoRepository(
+                new Prestamo(1, null, null, BigDecimal.TEN, BigDecimal.ZERO,
+                        1, LocalDate.now(), EstadoPrestamo.PENDIENTE));
+        PrestamoService service = new PrestamoService(prestamos,
+                new FakeClienteRepository(), new FakeEmpleadoRepository(), new FakePagoRepository());
+
+        assertThrows(ValidacionException.class, () -> service.crear(null));
+    }
+
+    @Test
+    void nuevosPrestamosSiempreInicianPendientes() {
+        Prestamo nuevo = new Prestamo(new Cliente(1, "Cliente Demo", "123456",
+                "cliente@example.com", "3001234567"),
+                new Empleado(1, "Empleado Demo", "654321", "empleado@example.com",
+                        "Asesor", BigDecimal.ONE),
+                new BigDecimal("100.00"), BigDecimal.ZERO, 2, LocalDate.now(),
+                EstadoPrestamo.PAGADO);
+        FakePrestamoRepository repositorio = new FakePrestamoRepository(nuevo);
+        PrestamoService service = new PrestamoService(repositorio,
+                new FakeClienteRepository(), new FakeEmpleadoRepository(), new FakePagoRepository()) {
+            @Override
+            public void sincronizarRespaldo() {
+            }
+        };
+
+        service.crear(nuevo);
+
+        assertEquals(EstadoPrestamo.PENDIENTE, repositorio.prestamoGuardado.getEstado());
+    }
+
     private static final class FakePagoRepository implements PagoRepository {
         @Override public boolean guardar(Pago pago) { return true; }
         @Override public List<Pago> listar() { return List.of(); }
@@ -45,8 +78,9 @@ class PrestamoServiceTest {
 
     private static final class FakePrestamoRepository implements PrestamoRepository {
         private final Prestamo prestamo;
+        private Prestamo prestamoGuardado;
         private FakePrestamoRepository(Prestamo prestamo) { this.prestamo = prestamo; }
-        @Override public boolean guardar(Prestamo value) { return true; }
+        @Override public boolean guardar(Prestamo value) { prestamoGuardado = value; return true; }
         @Override public List<Prestamo> listar() { return List.of(prestamo); }
         @Override public Prestamo buscarPorId(int id) { return id == prestamo.getId() ? prestamo : null; }
         @Override public boolean cambiarEstado(int id, EstadoPrestamo estado) { return true; }
@@ -57,7 +91,10 @@ class PrestamoServiceTest {
     private static final class FakeClienteRepository implements ClienteRepository {
         @Override public boolean guardar(Cliente cliente) { return true; }
         @Override public List<Cliente> listar() { return List.of(); }
-        @Override public Cliente buscarPorId(int id) { return null; }
+        @Override public Cliente buscarPorId(int id) {
+            return id == 1 ? new Cliente(1, "Cliente Demo", "123456",
+                    "cliente@example.com", "3001234567") : null;
+        }
         @Override public boolean actualizar(Cliente cliente) { return false; }
         @Override public boolean eliminar(int id) { return false; }
     }
@@ -65,7 +102,10 @@ class PrestamoServiceTest {
     private static final class FakeEmpleadoRepository implements EmpleadoRepository {
         @Override public boolean guardar(Empleado empleado) { return true; }
         @Override public List<Empleado> listar() { return List.of(); }
-        @Override public Empleado buscarPorId(int id) { return null; }
+        @Override public Empleado buscarPorId(int id) {
+            return id == 1 ? new Empleado(1, "Empleado Demo", "654321",
+                    "empleado@example.com", "Asesor", BigDecimal.ONE) : null;
+        }
         @Override public boolean actualizar(Empleado empleado) { return false; }
         @Override public boolean eliminar(int id) { return false; }
     }

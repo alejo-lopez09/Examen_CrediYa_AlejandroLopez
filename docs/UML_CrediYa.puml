@@ -7,6 +7,7 @@ skinparam packageStyle rectangle
 package "Vista" {
   class Main
   class MenuPrincipal
+  class MenuRespaldos
   class "Menús de módulo\n(Empleados, Clientes,\nPréstamos, Pagos, Reportes)" as MenusModulo
 }
 
@@ -78,6 +79,8 @@ Prestamo --> EstadoPrestamo
 
 Main --> MenuPrincipal
 MenuPrincipal *-- MenusModulo
+MenuPrincipal *-- MenuRespaldos
+MenuRespaldos ..> ArchivoUtil : lee respaldos
 MenusModulo --> EmpleadoService
 MenusModulo --> ClienteService
 MenusModulo --> PrestamoService

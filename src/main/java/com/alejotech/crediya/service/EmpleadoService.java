@@ -67,11 +67,14 @@ public class EmpleadoService {
         if (empleado == null) {
             throw new ValidacionException("El empleado es obligatorio.");
         }
-        Validaciones.requerido(empleado.getNombre(), "El nombre");
+        empleado.setNombre(Validaciones.texto(empleado.getNombre(), "El nombre", 80));
+        empleado.setDocumento(Validaciones.texto(empleado.getDocumento(), "El documento", 30));
         Validaciones.documento(empleado.getDocumento());
-        Validaciones.requerido(empleado.getRol(), "El rol");
+        empleado.setRol(Validaciones.texto(empleado.getRol(), "El rol", 30));
+        empleado.setCorreo(Validaciones.texto(empleado.getCorreo(), "El correo", 80));
         Validaciones.correo(empleado.getCorreo());
         Validaciones.positivo(empleado.getSalario(), "El salario");
+        Validaciones.maximoDigitosEnteros(empleado.getSalario(), 8, "El salario");
     }
 
     private void validarId(int id) {

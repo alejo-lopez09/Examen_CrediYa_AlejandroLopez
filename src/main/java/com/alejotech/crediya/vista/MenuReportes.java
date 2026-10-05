@@ -43,10 +43,10 @@ public class MenuReportes {
         int opcion;
         do {
             System.out.println("\n========== REPORTES ==========");
-            System.out.println("1. Préstamos pendientes");
+            System.out.println("1. Préstamos activos (pendientes)");
             System.out.println("2. Préstamos pagados");
             System.out.println("3. Préstamos superiores a $1.000.000");
-            System.out.println("4. Préstamos en mora");
+            System.out.println("4. Préstamos con cuotas vencidas (en mora)");
             System.out.println("5. Clientes con préstamos");
             System.out.println("6. Clientes morosos");
             System.out.println("7. Total prestado por empleado");
@@ -77,7 +77,9 @@ public class MenuReportes {
     }
 
     private void filtrarEstado(EstadoPrestamo estado) {
-        System.out.println("\n--- PRÉSTAMOS " + estado + " ---");
+        System.out.println(estado == EstadoPrestamo.PENDIENTE
+                ? "\n--- PRÉSTAMOS ACTIVOS (PENDIENTES) ---"
+                : "\n--- PRÉSTAMOS PAGADOS ---");
         prestamoService.listar().stream()
                 .filter(p -> p.getEstado() == estado)
                 .forEach(System.out::println);
@@ -128,6 +130,7 @@ public class MenuReportes {
                         Collectors.reducing(BigDecimal.ZERO, Prestamo::getMonto, BigDecimal::add)));
         Map<Integer, Empleado> empleados = empleadoService.listar().stream()
                 .collect(Collectors.toMap(Empleado::getId, e -> e));
+        empleados.keySet().forEach(id -> totales.putIfAbsent(id, BigDecimal.ZERO));
         System.out.println("\n--- TOTAL PRESTADO POR EMPLEADO ---");
         totales.forEach((id, total) -> System.out.println(
                 empleados.get(id).getNombre() + ": $" + total));
@@ -154,6 +157,7 @@ public class MenuReportes {
                         Collectors.reducing(BigDecimal.ZERO, Pago::getMonto, BigDecimal::add)));
         Map<Integer, Cliente> clientes = clienteService.listar().stream()
                 .collect(Collectors.toMap(Cliente::getId, c -> c));
+        clientes.keySet().forEach(id -> recaudo.putIfAbsent(id, BigDecimal.ZERO));
         System.out.println("\n--- RECAUDO POR CLIENTE ---");
         recaudo.forEach((id, total) ->
                 System.out.println(clientes.get(id).getNombre() + ": $" + total));

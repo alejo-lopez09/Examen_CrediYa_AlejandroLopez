@@ -55,14 +55,13 @@ public class PrestamoService {
             throw new RecursoNoEncontradoException("El empleado no existe.");
         }
         Validaciones.positivo(prestamo.getMonto(), "El monto");
+        Validaciones.maximoDigitosEnteros(prestamo.getMonto(), 10, "El monto");
         Validaciones.interes(prestamo.getInteres());
         Validaciones.cuotas(prestamo.getCuotas());
         if (prestamo.getFechaInicio() == null) {
             throw new ValidacionException("La fecha de inicio es obligatoria.");
         }
-        if (prestamo.getEstado() == null) {
-            prestamo.setEstado(EstadoPrestamo.PENDIENTE);
-        }
+        prestamo.setEstado(EstadoPrestamo.PENDIENTE);
         if (!prestamoRepository.guardar(prestamo)) {
             throw new ValidacionException("No se pudo registrar el préstamo.");
         }

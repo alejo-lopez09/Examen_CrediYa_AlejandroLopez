@@ -6,6 +6,7 @@ import java.math.BigDecimal;
 import com.alejotech.crediya.excepciones.ValidacionException;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class ValidacionesTest {
@@ -28,5 +29,14 @@ class ValidacionesTest {
                 () -> Validaciones.telefono("123"));
         assertThrows(ValidacionException.class,
                 () -> Validaciones.positivo(new BigDecimal("1.001"), "Monto"));
+    }
+
+    @Test
+    void normalizaTextosYRechazaLongitudesQueExcedenElEsquema() {
+        assertEquals("Nombre", Validaciones.texto(" Nombre ", "Nombre", 80));
+        assertThrows(ValidacionException.class,
+                () -> Validaciones.texto("x".repeat(81), "Nombre", 80));
+        assertThrows(ValidacionException.class,
+                () -> Validaciones.maximoDigitosEnteros(new BigDecimal("100000000.00"), 8, "Salario"));
     }
 }

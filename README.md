@@ -8,7 +8,7 @@ Aplicación de consola Java para administrar empleados, clientes, préstamos y p
 - Maven 3.8 o posterior.
 - MySQL 8.0 o posterior.
 
-El proyecto apunta a Java 17: usa text blocks y `Stream.toList()`, disponibles desde versiones anteriores a 17, y compila en los equipos habituales de clase sin exigir Java 25.
+El proyecto apunta a Java 17: los text blocks están disponibles desde Java 15 y `Stream.toList()` desde Java 16; el código no requiere Java 25.
 
 ## Preparar MySQL
 
@@ -44,16 +44,18 @@ mvn exec:java -Dexec.mainClass=com.alejotech.crediya.Main
 
 La base debe estar accesible al iniciar la aplicación. `Main` construye los servicios y delega la interacción a `vista/MenuPrincipal`; al iniciar también reconstruye los respaldos de texto desde MySQL.
 
+En el menú principal, “Consultar respaldos en archivos” permite leer individualmente los cuatro `data/*.txt` o mostrarlos todos. Los archivos se usan como consulta/exportación, no como una vía de restauración a MySQL.
+
 ## Ejemplo de salida
 
 Con los datos incluidos en el script SQL y la fecha de ejemplo 5 de octubre de 2026, el menú ofrece las opciones:
 
 ```text
 ========== REPORTES ==========
-1. Préstamos pendientes
+1. Préstamos activos (pendientes)
 2. Préstamos pagados
 3. Préstamos superiores a $1.000.000
-4. Préstamos en mora
+4. Préstamos con cuotas vencidas (en mora)
 5. Clientes con préstamos
 6. Clientes morosos
 7. Total prestado por empleado
@@ -63,6 +65,8 @@ Con los datos incluidos en el script SQL y la fecha de ejemplo 5 de octubre de 2
 11. Volver
 Seleccione una opción:
 ```
+
+En el menú principal se puede elegir `6. Consultar respaldos en archivos` y después `5. Todos` para leer los registros guardados en los cuatro archivos de `data/`.
 
 El reporte de cartera muestra los agregados calculados a partir de los préstamos y pagos:
 
@@ -80,11 +84,14 @@ David Pérez: $510000.00
 
 Los importes dependen de los datos vigentes de MySQL y pueden cambiar al registrar pagos o préstamos.
 
+Los reportes usan Stream API para filtrar y transformar datos; `groupingBy` con sumas de `BigDecimal` agrupa el capital por empleado y los pagos por cliente. Los totales también muestran empleados y clientes sin actividad con valor cero.
+
 ## Reglas de negocio
 
 - El interés es simple sobre el capital. `Prestamo.calcularMontoTotal` es la implementación única del cálculo y redondea a dos decimales.
 - La cuota mensual es el total dividido por las cuotas, redondeado a dos decimales.
 - `EstadoPrestamo` modela los estados `PENDIENTE` y `PAGADO`; el acceso JDBC convierte el enum a texto solo al persistirlo.
+- Cada préstamo nuevo comienza como `PENDIENTE`; su estado no se puede fijar como pagado antes de que existan abonos que cubran el total.
 - Un préstamo está en mora si ya venció una o más cuotas mensuales y los pagos acumulados no cubren el valor esperado para esas cuotas. El reporte consulta los pagos agrupados en una sola operación, no una consulta por préstamo.
 - Registrar o eliminar un pago recalcula y persiste el estado del préstamo dentro de una transacción. La acción de “cambiar estado” solo permite corregir el estado para que refleje el saldo; no permite marcar como pagado un préstamo con deuda ni como pendiente uno saldado.
 - Los respaldos `.txt` se escriben desde datos confirmados en MySQL, no se importan al arrancar. Esta decisión evita tomar archivos editables/desactualizados como fuente de verdad y evita restauraciones parciales que violen relaciones o dupliquen registros. Si la base se pierde, debe restaurarse desde su propia copia de seguridad; los `.txt` son respaldo de lectura humana, no una exportación de restauración transaccional.

@@ -80,9 +80,12 @@ public class ClienteService {
         if (cliente == null) {
             throw new ValidacionException("El cliente es obligatorio.");
         }
-        Validaciones.requerido(cliente.getNombre(), "El nombre");
+        cliente.setNombre(Validaciones.texto(cliente.getNombre(), "El nombre", 80));
+        cliente.setDocumento(Validaciones.texto(cliente.getDocumento(), "El documento", 30));
         Validaciones.documento(cliente.getDocumento());
+        cliente.setCorreo(Validaciones.texto(cliente.getCorreo(), "El correo", 80));
         Validaciones.correo(cliente.getCorreo());
+        cliente.setTelefono(Validaciones.texto(cliente.getTelefono(), "El teléfono", 20));
         Validaciones.telefono(cliente.getTelefono());
     }
 
