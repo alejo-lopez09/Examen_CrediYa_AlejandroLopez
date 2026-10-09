@@ -20,9 +20,10 @@ public class Main {
             clientes.sincronizarRespaldo();
             prestamos.sincronizarRespaldo();
             pagos.sincronizarRespaldo();
-            new MenuPrincipal(new Scanner(System.in), empleados, clientes, prestamos, pagos).mostrar();
         } catch (CrediYaException e) {
-            System.err.println("No se pudo iniciar CrediYa: " + e.getMessage());
+            System.err.println("No se pudo sincronizar con MySQL: " + e.getMessage());
+            System.err.println("El menú sigue disponible. Registrar, listar y filtrar pagos en memoria no requiere la base.");
         }
+        new MenuPrincipal(new Scanner(System.in), empleados, clientes, prestamos, pagos).mostrar();
     }
 }

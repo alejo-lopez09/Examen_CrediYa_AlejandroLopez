@@ -5,11 +5,25 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 
 public class ConexionDB {
+    private static final ConexionDB INSTANCIA = new ConexionDB();
+
     private static final String URL = valor("CREDIYA_DB_URL", "jdbc:mysql://localhost:3306/crediya_db");
     private static final String USER = valor("CREDIYA_DB_USER", "root");
     private static final String PASSWORD = valor("CREDIYA_DB_PASSWORD", "supapaxd12A");
 
+    private ConexionDB() {
+    }
+
+    public static ConexionDB getInstancia() {
+        return INSTANCIA;
+    }
+
     public static Connection getConnection() throws SQLException {
+        return INSTANCIA.nuevaConexion();
+    }
+
+    private Connection nuevaConexion() throws SQLException {
+        // Cada llamada abre una conexión independiente: los DAO la cierran con try-with-resources.
         return DriverManager.getConnection(URL, USER, PASSWORD);
     }
 

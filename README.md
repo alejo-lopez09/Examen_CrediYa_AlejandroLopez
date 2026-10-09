@@ -13,7 +13,7 @@ El proyecto apunta a Java 17: los text blocks están disponibles desde Java 15 y
 ## Preparar MySQL
 
 1. Ejecutar [`sql/crediya_db.sql`](sql/crediya_db.sql) en MySQL. El script crea el esquema e inserta o actualiza datos de demostración; no elimina registros adicionales.
-2. Configurar la conexión con variables de entorno. El URL por defecto es `jdbc:mysql://localhost:3306/crediya_db`, el usuario por defecto `root` y la contraseña por defecto vacía.
+2. Configurar la conexión con variables de entorno. El URL por defecto es `jdbc:mysql://localhost:3306/crediya_db` y el usuario por defecto es `root`. La contraseña se toma de `CREDIYA_DB_PASSWORD`; si la variable no está definida, `ConexionDB` usa el valor que ya trae el proyecto. No hace falta copiar esa clave a otro archivo.
 
 En PowerShell:
 
@@ -38,11 +38,11 @@ No guardes contraseñas reales en el código ni en archivos versionados. `CREATE
 Desde la raíz del proyecto:
 
 ```sh
-mvn clean verify
+mvn compile
 mvn exec:java -Dexec.mainClass=com.alejotech.crediya.Main
 ```
 
-La base debe estar accesible al iniciar la aplicación. `Main` construye los servicios y delega la interacción a `vista/MenuPrincipal`; al iniciar también reconstruye los respaldos de texto desde MySQL.
+`Main` construye los servicios, intenta reconstruir los respaldos desde MySQL y abre `vista/MenuPrincipal`. Si la base no responde, el menú igual se abre. Registrar, listar y filtrar pagos en memoria no depende de MySQL. Guardar un pago, el historial, los totales y el resto de módulos sí usan la base.
 
 En el menú principal, “Consultar respaldos en archivos” permite leer individualmente los cuatro `data/*.txt` o mostrarlos todos. Los archivos se usan como consulta/exportación, no como una vía de restauración a MySQL.
 
@@ -124,7 +124,7 @@ Proyecto_Java/
 |   |   |-- dao/                       Contratos Repository y adaptadores DAO
 |   |   |-- excepciones/               Excepciones de negocio tipadas
 |   |   |-- modelo/                    Entidades, enum y reglas de dominio
-|   |   |-- service/                   Validaciones y casos de uso
+|   |   |-- service/                   Validaciones, casos de uso y GestorPagos
 |   |   |-- util/                      Archivos, entrada y validaciones comunes
 |   |   |-- vista/                     Menús de consola por módulo
 |   |   `-- Main.java                  Punto de entrada de la aplicación
@@ -157,6 +157,27 @@ El archivo [`docs/CrediYa_Arquitectura.drawio`](docs/CrediYa_Arquitectura.drawio
 
 Las relaciones del esquema son `clientes 1:N prestamos`, `empleados 1:N prestamos` y `prestamos 1:N pagos`; las claves foráneas impiden borrar registros padre mientras tengan registros dependientes.
 
+## Gestión de pagos
+
+En el menú principal, la opción `4` abre la gestión de pagos:
+
+```text
+1. Registrar pago
+2. Listar pagos
+3. Pagos mayores a un monto
+4. Historial de pagos
+5. Ver total pagado
+6. Ver saldo pendiente
+7. Eliminar pago
+8. Volver
+```
+
+Registrar pide el préstamo, el monto y la fecha `aaaa-mm-dd`. Un monto negativo, un monto no numérico o una fecha vacía o mal formada se rechazan y no se envían a MySQL. Si los datos son válidos, el pago entra a `GestorPagos` y `PagoService` lo guarda con `PagoDAO`. El mensaje de guardado solo aparece cuando esa operación termina bien. Si MySQL falla, el pago queda en memoria y el programa lo dice. El estado del préstamo lo actualiza `PagoService`, no `GestorPagos`.
+
+Listar y el filtro de montos mayores usan la misma colección. Con la base disponible, esa colección se carga desde MySQL. Si la consulta falla, se muestran los pagos que siguen en memoria. El filtro usa Stream API y deja fuera los montos iguales al valor ingresado.
+
+La tabla `pagos` ya está definida en [`sql/crediya_db.sql`](sql/crediya_db.sql): `id` autoincremental, `prestamo_id`, `fecha_pago` y `monto`, con clave foránea hacia `prestamos(id)`.
+
 ## Pruebas
 
 Verificación automatizada ejecutada en el proyecto:
@@ -165,7 +186,7 @@ Verificación automatizada ejecutada en el proyecto:
 mvn clean verify
 ```
 
-Resultado de la última ejecución: **14 pruebas, 0 fallos y 0 errores**. Maven compiló las 35 clases de producción y las 6 clases de prueba con `--release 17`, ejecutó Surefire y completó `verify`.
+El proyecto conserva sus 6 clases de prueba anteriores. Esta integración no agrega ninguna. La comprobación de este cambio fue `mvn compile` y la ejecución de `Main` desde la terminal.
 
 | Suite | Casos | Qué comprueba |
 |---|---:|---|
